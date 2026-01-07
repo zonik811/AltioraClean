@@ -1,7 +1,8 @@
 "use server";
 
-import { databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
-import { Query, ID } from "appwrite";
+import { databases } from "@/lib/appwrite-admin";
+import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { Query, ID } from "node-appwrite";
 import {
     EstadoCita,
     TipoPropiedad,
