@@ -10,14 +10,18 @@ const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim()!;
 const privateKey = process.env.VAPID_PRIVATE_KEY?.trim()!;
 
 // Configure web-push
-if (publicKey && privateKey) {
-    webpush.setVapidDetails(
-        "mailto:admin@altioraclean.com",
-        publicKey,
-        privateKey
-    );
-} else {
-    console.warn("VAPID keys missing, push notifications disabled.");
+try {
+    if (publicKey && privateKey) {
+        webpush.setVapidDetails(
+            "mailto:admin@altioraclean.com",
+            publicKey,
+            privateKey
+        );
+    } else {
+        console.warn("VAPID keys missing, push notifications disabled.");
+    }
+} catch (error) {
+    console.warn("Failed to initialize Web Push (check VAPID keys):", error);
 }
 
 const COLLECTION_SUBSCRIPTIONS = "push_subscriptions"; // Ensure this matches your Appwrite Collection ID
