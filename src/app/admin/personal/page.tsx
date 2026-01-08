@@ -114,8 +114,8 @@ export default function PersonalPage() {
                             key={f}
                             onClick={() => setFiltro(f)}
                             className={`flex-1 sm:flex-none px-6 py-2 text-sm font-medium rounded-md transition-all ${filtro === f
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                                 } capitalize`}
                         >
                             {f}
@@ -167,7 +167,7 @@ export default function PersonalPage() {
                                                 <Avatar className="h-11 w-11 border-2 border-white shadow-sm ring-1 ring-gray-100">
                                                     {empleado.foto ? (
                                                         <AvatarImage
-                                                            src={obtenerURLArchivo(empleado.foto)}
+                                                            src={obtenerURLArchivo(empleado.foto || "")}
                                                             alt={nombreCompleto(empleado.nombre, empleado.apellido)}
                                                             className="object-cover"
                                                         />
@@ -187,8 +187,8 @@ export default function PersonalPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className={`font-medium capitalize px-3 py-1 bg-white shadow-sm ${empleado.cargo === "supervisor" ? "text-violet-700 border-violet-200 bg-violet-50" :
-                                                    empleado.cargo === "especialista" ? "text-blue-700 border-blue-200 bg-blue-50" :
-                                                        "text-gray-700 border-gray-200 bg-gray-50"
+                                                empleado.cargo === "especialista" ? "text-blue-700 border-blue-200 bg-blue-50" :
+                                                    "text-gray-700 border-gray-200 bg-gray-50"
                                                 }`}>
                                                 {empleado.cargo}
                                             </Badge>

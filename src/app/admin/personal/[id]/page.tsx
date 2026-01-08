@@ -254,7 +254,7 @@ export default function PerfilEmpleadoPage() {
                         <div className="-mt-16 mb-6 flex justify-center">
                             <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
                                 {empleado.foto ? (
-                                    <AvatarImage src={obtenerURLArchivo(empleado.foto)} className="object-cover" />
+                                    <AvatarImage src={obtenerURLArchivo(empleado.foto || "")} className="object-cover" />
                                 ) : (
                                     <AvatarFallback className="text-4xl bg-gray-100 text-gray-400">
                                         {empleado.nombre[0]}{empleado.apellido[0]}

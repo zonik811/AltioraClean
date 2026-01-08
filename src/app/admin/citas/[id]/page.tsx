@@ -381,7 +381,7 @@ export default function DetalleCitaPage() {
                                     {empleadosAsignadosData.map((empleado) => (
                                         <div key={empleado.$id} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow">
                                             <Avatar className="h-10 w-10 border border-gray-100">
-                                                <AvatarImage src={obtenerURLArchivo(empleado.foto)} className="object-cover" />
+                                                <AvatarImage src={obtenerURLArchivo(empleado.foto || "")} className="object-cover" />
                                                 <AvatarFallback className="bg-primary/10 text-primary font-bold">
                                                     {empleado.nombre[0]}{empleado.apellido[0]}
                                                 </AvatarFallback>
@@ -420,7 +420,7 @@ export default function DetalleCitaPage() {
                                             />
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-6 w-6">
-                                                    <AvatarImage src={obtenerURLArchivo(empleado.foto)} />
+                                                    <AvatarImage src={obtenerURLArchivo(empleado.foto || "")} />
                                                     <AvatarFallback className="text-[10px]">
                                                         {empleado.nombre[0]}{empleado.apellido[0]}
                                                     </AvatarFallback>
