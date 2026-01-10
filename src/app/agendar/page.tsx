@@ -443,9 +443,10 @@ export default function AgendarPage() {
                                                     disabled={selectedAddressId !== "new"}
                                                 >
                                                     <option value="Bogotá">Bogotá</option>
-                                                    <option value="Medellín">Medellín</option>
-                                                    <option value="Cali">Cali</option>
-                                                    <option value="Barranquilla">Barranquilla</option>
+                                                    <option value="Mosquera">Mosquera</option>
+                                                    <option value="Funza">Funza</option>
+                                                    <option value="Fusagasugá">Fusagasugá</option>
+                                                    <option value="Soacha">Soacha</option>
                                                 </select>
                                             </div>
                                             <div className="space-y-2">

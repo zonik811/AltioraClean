@@ -232,14 +232,22 @@ export default function NuevaCitaPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="ciudad">Ciudad *</Label>
-                                    <Input
+                                    <select
                                         id="ciudad"
                                         required
                                         value={formData.ciudad}
                                         onChange={(e) =>
                                             setFormData({ ...formData, ciudad: e.target.value })
                                         }
-                                    />
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                    >
+                                        <option value="">Seleccionar ciudad</option>
+                                        <option value="Bogotá">Bogotá</option>
+                                        <option value="Mosquera">Mosquera</option>
+                                        <option value="Funza">Funza</option>
+                                        <option value="Fusagasugá">Fusagasugá</option>
+                                        <option value="Soacha">Soacha</option>
+                                    </select>
                                 </div>
                             </div>
 
