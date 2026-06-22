@@ -1,8 +1,9 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
+import { requireAdmin } from "@/lib/auth-server";
 
 export interface RegistrarPagoClienteInput {
     citaId: string;
@@ -37,8 +38,9 @@ export interface PagoCliente {
  */
 export async function obtenerPagosClientes(): Promise<PagoCliente[]> {
     try {
+        await requireAdmin();
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_CLIENTES,
             [
                 Query.orderDesc('fechaPago'),
@@ -46,7 +48,7 @@ export async function obtenerPagosClientes(): Promise<PagoCliente[]> {
             ]
         );
         return response.documents as unknown as PagoCliente[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo pagos de clientes:", error);
         return [];
     }
@@ -58,16 +60,14 @@ export async function obtenerPagosClientes(): Promise<PagoCliente[]> {
 async function recalcularEstadoPagoCita(citaId: string) {
     if (!citaId) return;
 
-    console.log(`🔄 Recalculando estado de pago para cita: ${citaId}`);
-
     try {
         // 1. Obtener la cita para saber el precio total
-        const cita = await databases.getDocument(DATABASE_ID, COLLECTIONS.CITAS, citaId);
+        const cita = await databases.getDocument(getDatabaseId(), COLLECTIONS.CITAS, citaId);
         const precioTotal = cita.precioAcordado || cita.precioCliente || 0;
 
         // 2. Obtener TODOS los pagos asociados a esta cita
         const pagos = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_CLIENTES,
             [
                 Query.equal('citaId', citaId)
@@ -75,18 +75,15 @@ async function recalcularEstadoPagoCita(citaId: string) {
         );
 
         // 3. Sumar montos
-        const totalPagado = pagos.documents.reduce((sum: number, pago: any) => sum + (pago.monto || 0), 0);
+        const totalPagado = pagos.documents.reduce((sum: number, pago) => sum + ((pago.monto as number) || 0), 0);
 
         // 4. Determinar estado
         // Consideramos pagado si el total pagado es mayor o igual al precio (con un margen de error pequeño por decimales si fuera necesario, aqui entero)
         const isPagado = totalPagado >= precioTotal;
 
-        console.log(`💰 Cita ${citaId}: TotalPagado=${totalPagado} / Precio=${precioTotal} -> Pagado? ${isPagado}`);
-
-        // 5. Actualizar cita si el estado cambia
         if (cita.pagadoPorCliente !== isPagado) {
             await databases.updateDocument(
-                DATABASE_ID,
+                getDatabaseId(),
                 COLLECTIONS.CITAS,
                 citaId,
                 {
@@ -94,13 +91,10 @@ async function recalcularEstadoPagoCita(citaId: string) {
                     updatedAt: new Date().toISOString() // Force refresh
                 }
             );
-            console.log(`✅ Estado de Cita ${citaId} actualizado a: ${isPagado ? 'PAGADO' : 'PENDIENTE'}`);
-        } else {
-            console.log(`ℹ️ Estado de Cita ${citaId} sin cambios (${isPagado})`);
         }
 
     } catch (error) {
-        console.error(`❌ Error recalculando estado de cita ${citaId}:`, error);
+        console.error(`Error recalculando estado de cita ${citaId}:`, error);
     }
 }
 
@@ -109,6 +103,7 @@ async function recalcularEstadoPagoCita(citaId: string) {
  */
 export async function registrarPagoCliente(data: RegistrarPagoClienteInput): Promise<{ success: boolean; data?: PagoCliente; error?: string }> {
     try {
+        await requireAdmin();
         const pagoData = {
             citaId: data.citaId,
             clienteId: data.clienteId,
@@ -121,21 +116,19 @@ export async function registrarPagoCliente(data: RegistrarPagoClienteInput): Pro
         };
 
         const newPago = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_CLIENTES,
             ID.unique(),
             pagoData
         );
 
-        console.log(`✅ Pago de cliente registrado: $${data.monto}`);
-
-        // Recalcular estado de la cita
         await recalcularEstadoPagoCita(data.citaId);
 
         return { success: true, data: newPago as unknown as PagoCliente };
-    } catch (error: any) {
-        console.error("❌ Error registrando pago de cliente:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error registrando pago de cliente:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al registrar pago";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -144,13 +137,14 @@ export async function registrarPagoCliente(data: RegistrarPagoClienteInput): Pro
  */
 export async function actualizarPagoCliente(data: ActualizarPagoClienteInput): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireAdmin();
         const { id, ...updateData } = data;
 
         // Obtener pago original para saber citaId (por si cambió, aunque inusual)
-        const pagoOriginal = await databases.getDocument(DATABASE_ID, COLLECTIONS.PAGOS_CLIENTES, id);
+        const pagoOriginal = await databases.getDocument(getDatabaseId(), COLLECTIONS.PAGOS_CLIENTES, id);
 
         await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_CLIENTES,
             id,
             updateData
@@ -161,9 +155,10 @@ export async function actualizarPagoCliente(data: ActualizarPagoClienteInput): P
         await recalcularEstadoPagoCita(targetCitaId);
 
         return { success: true };
-    } catch (error: any) {
-        console.error("❌ Error actualizando pago:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error actualizando pago:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al actualizar pago";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -172,26 +167,24 @@ export async function actualizarPagoCliente(data: ActualizarPagoClienteInput): P
  */
 export async function eliminarPagoCliente(pagoId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        // Obtenemos el pago antes de borrarlo para saber a qué cita afectará
-        const pago = await databases.getDocument(DATABASE_ID, COLLECTIONS.PAGOS_CLIENTES, pagoId);
+        await requireAdmin();
+        const pago = await databases.getDocument(getDatabaseId(), COLLECTIONS.PAGOS_CLIENTES, pagoId);
         const citaId = pago.citaId;
 
         await databases.deleteDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_CLIENTES,
             pagoId
         );
 
-        console.log(`🗑️ Pago ${pagoId} eliminado`);
-
-        // Recalcular estado de la cita (Esto "devuelve" la lógica de pendiente si el saldo baja)
         if (citaId) {
             await recalcularEstadoPagoCita(citaId);
         }
 
         return { success: true };
-    } catch (error: any) {
-        console.error("❌ Error eliminando pago:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error eliminando pago:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar pago";
+        return { success: false, error: errorMessage };
     }
 }

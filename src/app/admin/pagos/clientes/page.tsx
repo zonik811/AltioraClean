@@ -22,6 +22,7 @@ import {
 import { obtenerPagosClientes, registrarPagoCliente, eliminarPagoCliente, type PagoCliente } from "@/lib/actions/pagos-clientes";
 import { obtenerCitas } from "@/lib/actions/citas";
 import { obtenerClientes } from "@/lib/actions/clientes";
+import type { Cliente, Cita } from "@/types";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import {
     BarChart,
@@ -39,8 +40,8 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'];
 export default function PagosClientesPage() {
     const [pagos, setPagos] = useState<PagoCliente[]>([]);
     const [filteredPagos, setFilteredPagos] = useState<PagoCliente[]>([]);
-    const [clientes, setClientes] = useState<any[]>([]);
-    const [citas, setCitas] = useState<any[]>([]);
+    const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [citas, setCitas] = useState<Cita[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDialog, setShowDialog] = useState(false);
     const [selectedCitaInfo, setSelectedCitaInfo] = useState<{ precio: number, pagado: number, restante: number } | null>(null);
@@ -54,7 +55,7 @@ export default function PagosClientesPage() {
 
     // Estados para el formulario
     const [selectedClienteId, setSelectedClienteId] = useState("");
-    const [citasCliente, setCitasCliente] = useState<any[]>([]);
+    const [citasCliente, setCitasCliente] = useState<Cita[]>([]);
 
     const [nuevoPago, setNuevoPago] = useState({
         citaId: "",
@@ -96,7 +97,7 @@ export default function PagosClientesPage() {
 
         if (filtros.clienteId !== "todos") {
             resultado = resultado.filter(p => {
-                const cita = citas.find(c => c.id === p.citaId || c.id === p.citaId[0]);
+                const cita = citas.find(c => c.$id === p.citaId || c.$id === p.citaId[0]);
                 return cita && cita.clienteId === filtros.clienteId;
             });
         }
@@ -139,7 +140,7 @@ export default function PagosClientesPage() {
     };
 
     const handleCitaChange = (citaId: string) => {
-        const cita = citasCliente.find(c => c.id === citaId);
+        const cita = citasCliente.find(c => c.$id === citaId);
 
         if (cita) {
             // Calcular cuánto se ha pagado ya por esta cita (buscando en historial de pagos cargados)
@@ -224,14 +225,14 @@ export default function PagosClientesPage() {
 
     const chartData = clientes.map(cliente => {
         const pagosDelCliente = filteredPagos.filter(p => {
-            const cita = citas.find(c => c.id === p.citaId || c.id === p.citaId[0]);
+            const cita = citas.find(c => c.$id === p.citaId || c.$id === p.citaId[0]);
             return cita && cita.clienteId === cliente.$id;
         });
 
         const total = pagosDelCliente.reduce((sum, p) => sum + p.monto, 0);
 
         return {
-            name: `${cliente.nombre.split(' ')[0]} ${cliente.apellido ? cliente.apellido.split(' ')[0] : ''}`,
+            name: cliente.nombre,
             monto: total
         };
     })
@@ -295,7 +296,7 @@ export default function PagosClientesPage() {
                     >
                         <option value="todos">Todos los clientes</option>
                         {clientes.map(c => (
-                            <option key={c.$id} value={c.$id}>{c.nombre} {c.apellido}</option>
+                            <option key={c.$id} value={c.$id}>{c.nombre}</option>
                         ))}
                     </select>
                 </div>
@@ -413,7 +414,7 @@ export default function PagosClientesPage() {
                                 </TableRow>
                             ) : (
                                 filteredPagos.map((pago) => {
-                                    const cita = citas.find(c => c.id === pago.citaId[0] || c.id === pago.citaId);
+                                    const cita = citas.find(c => c.$id === pago.citaId[0] || c.$id === pago.citaId);
                                     const clienteNombre = cita ? cita.clienteNombre : "Cliente Desconocido";
 
                                     return (
@@ -485,7 +486,7 @@ export default function PagosClientesPage() {
                                     <option value="">Seleccionar Cliente...</option>
                                     {clientes.map((c) => (
                                         <option key={c.$id} value={c.$id}>
-                                            {c.nombre} {c.apellido} ({c.telefono})
+                                            {c.nombre} ({c.telefono})
                                         </option>
                                     ))}
                                 </select>
@@ -503,7 +504,7 @@ export default function PagosClientesPage() {
                                         {selectedClienteId ? (citasCliente.length > 0 ? "Seleccionar Cita..." : "No hay pagos pendientes") : "Primero selecciona un cliente"}
                                     </option>
                                     {citasCliente.map((c) => (
-                                        <option key={c.id} value={c.id}>
+                                        <option key={c.$id} value={c.$id}>
                                             {formatearFecha(c.fechaCita)} - {c.tipoPropiedad} ({formatearPrecio(c.precioAcordado || c.precioCliente)})
                                         </option>
                                     ))}

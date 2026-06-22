@@ -1,7 +1,7 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { ID, Query } from "node-appwrite";
 import type { HistorialPuntos, CreateResponse, Cliente } from "@/types";
 
@@ -19,7 +19,7 @@ interface RegistrarPuntosInput {
 export async function obtenerHistorialPuntos(clienteId: string): Promise<HistorialPuntos[]> {
     try {
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.HISTORIAL_PUNTOS,
             [
                 Query.equal("clienteId", clienteId),
@@ -27,7 +27,7 @@ export async function obtenerHistorialPuntos(clienteId: string): Promise<Histori
             ]
         );
         return response.documents as unknown as HistorialPuntos[];
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("Error obteniendo historial puntos:", error);
         return [];
     }
@@ -40,7 +40,7 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
     try {
         // 1. Crear registro en historial
         const historialDoc = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.HISTORIAL_PUNTOS,
             ID.unique(),
             {
@@ -54,7 +54,7 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
 
         // 2. Actualizar el total en el cliente (Re-fetch para asegurar consistencia)
         const clienteDoc = await databases.getDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             data.clienteId
         );
@@ -70,7 +70,7 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
         else if (nuevosPuntos >= 10) nuevoNivel = "PLATA";
 
         await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             data.clienteId,
             {
@@ -82,8 +82,9 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
         );
 
         return { success: true, data: historialDoc as unknown as HistorialPuntos };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error registrando puntos:", error);
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : "Error al registrar puntos";
+        return { success: false, error: errorMessage };
     }
 }

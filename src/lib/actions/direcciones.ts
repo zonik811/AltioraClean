@@ -1,7 +1,7 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { ID, Query } from "node-appwrite";
 import type { Direccion, CreateResponse, TipoPropiedad } from "@/types";
 
@@ -20,7 +20,7 @@ export interface CrearDireccionInput {
 export async function obtenerDireccionesCliente(clienteId: string): Promise<Direccion[]> {
     try {
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.DIRECCIONES,
             [
                 Query.equal("clienteId", clienteId),
@@ -28,7 +28,7 @@ export async function obtenerDireccionesCliente(clienteId: string): Promise<Dire
             ]
         );
         return response.documents as unknown as Direccion[];
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("Error obteniendo direcciones:", error);
         return [];
     }
@@ -40,7 +40,7 @@ export async function obtenerDireccionesCliente(clienteId: string): Promise<Dire
 export async function crearDireccion(data: CrearDireccionInput): Promise<CreateResponse<Direccion>> {
     try {
         const doc = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.DIRECCIONES,
             ID.unique(),
             {
@@ -53,9 +53,10 @@ export async function crearDireccion(data: CrearDireccionInput): Promise<CreateR
             }
         );
         return { success: true, data: doc as unknown as Direccion };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creando dirección:", error);
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : "Error al crear dirección";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -65,13 +66,14 @@ export async function crearDireccion(data: CrearDireccionInput): Promise<CreateR
 export async function eliminarDireccion(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         await databases.deleteDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.DIRECCIONES,
             id
         );
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error eliminando dirección:", error);
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar dirección";
+        return { success: false, error: errorMessage };
     }
 }

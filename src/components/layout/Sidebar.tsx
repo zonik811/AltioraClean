@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
     LayoutDashboard,
     Calendar,
@@ -15,8 +14,9 @@ import {
     TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NotificationToggle } from "@/components/ui/notification-toggle";
+import { NotificationToggle } from "@/components/admin/notification-toggle";
 import { useAuth } from "@/lib/hooks/useAuth";
+import styles from "./sidebar.module.css";
 
 const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -42,58 +42,55 @@ export function Sidebar() {
         }
     };
 
+    const isActiveLink = (href: string) => {
+        if (href === "/admin") return pathname === href;
+        return pathname.startsWith(href + "/") || pathname === href;
+    };
+
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-            {/* Logo */}
-            <div className="p-6 border-b border-slate-700">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary rounded-lg">
-                        <Sparkles className="h-6 w-6 text-white" />
+        <div className={styles.sidebar}>
+            <div className={styles.logoArea}>
+                <div className={styles.logoInner}>
+                    <div className={styles.logoIcon}>
+                        <Sparkles className={styles.logoIconSvg} />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold">Limpieza Pro</h1>
-                        <p className="text-xs text-slate-400">Panel Admin</p>
+                        <h1 className={styles.logoTitle}>AltioraClean</h1>
+                        <p className={styles.logoSubtitle}>Panel Admin</p>
                     </div>
                 </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <nav className={styles.nav}>
                 {navigation.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    const isActive = isActiveLink(item.href);
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={cn(
-                                "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
-                                isActive
-                                    ? "bg-primary text-white shadow-lg shadow-primary/30"
-                                    : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
-                            )}
+                            className={`${styles.navLink} ${isActive ? styles.navLinkActive : styles.navLinkInactive}`}
                         >
-                            <item.icon className="h-5 w-5" />
-                            <span className="font-medium">{item.name}</span>
+                            <item.icon className={styles.navIcon} />
+                            <span className={styles.navLabel}>{item.name}</span>
                         </Link>
                     );
                 })}
             </nav>
 
-            {/* User */}
-            <div className="p-4 border-t border-slate-700">
-                <div className="flex items-center justify-between mb-3 px-2">
-                    <div className="overflow-hidden">
-                        <p className="text-sm font-medium text-white truncate">
+            <div className={styles.userArea}>
+                <div className={styles.userInfo}>
+                    <div className={styles.userDetails}>
+                        <p className={styles.userName}>
                             {user?.name || user?.email || "Admin"}
                         </p>
-                        <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                        <p className={styles.userEmail}>{user?.email}</p>
                     </div>
                     <NotificationToggle />
                 </div>
                 <Button
                     onClick={handleLogout}
                     variant="outline"
-                    className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                    className={styles.logoutBtn}
                 >
                     <LogOut className="h-4 w-4 mr-2" />
                     Cerrar Sesión

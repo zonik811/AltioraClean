@@ -40,7 +40,8 @@ import {
     DialogFooter
 } from "@/components/ui/dialog";
 import { obtenerPagosEmpleado, registrarPago, eliminarPago, type Pago } from "@/lib/actions/pagos";
-import { obtenerEmpleados, obtenerEstadisticasEmpleado } from "@/lib/actions/empleados";
+import { obtenerTodosLosEmpleados, obtenerEstadisticasEmpleado } from "@/lib/actions/empleados";
+import type { Empleado, EstadisticasEmpleado } from "@/types";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import {
     BarChart,
@@ -58,10 +59,10 @@ const COLORS = ['#10B981', '#3b82f6', '#f97316', '#eab308', '#8b5cf6', '#ef4444'
 export default function PagosEmpleadosPage() {
     const [pagos, setPagos] = useState<Pago[]>([]);
     const [filteredPagos, setFilteredPagos] = useState<Pago[]>([]);
-    const [empleados, setEmpleados] = useState<any[]>([]);
+    const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDialog, setShowDialog] = useState(false);
-    const [selectedEmpleadoInfo, setSelectedEmpleadoInfo] = useState<any>(null);
+    const [selectedEmpleadoInfo, setSelectedEmpleadoInfo] = useState<EstadisticasEmpleado | null>(null);
     const [stats, setStats] = useState({
         totalPagado: 0,
         pagosCount: 0,
@@ -97,7 +98,7 @@ export default function PagosEmpleadosPage() {
     const cargarDatos = async () => {
         try {
             setLoading(true);
-            const empleadosData = await obtenerEmpleados();
+            const empleadosData = await obtenerTodosLosEmpleados();
             setEmpleados(empleadosData);
 
             const allPagosPromises = empleadosData.map(emp => obtenerPagosEmpleado(emp.$id));

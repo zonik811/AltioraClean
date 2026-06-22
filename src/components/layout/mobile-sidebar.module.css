@@ -1,0 +1,13 @@
+@reference "../../app/globals.css";
+
+.triggerBtn {
+  @apply lg:hidden pr-4 hover:bg-transparent;
+}
+
+.menuIcon {
+  @apply h-8 w-8 text-primary;
+}
+
+.sheetContent {
+  @apply p-0 bg-slate-900 border-r-slate-800 w-72;
+}

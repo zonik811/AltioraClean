@@ -1,0 +1,25 @@
+@reference "../../app/globals.css";
+
+.icon {
+  @apply h-4 w-4;
+}
+
+.iconBell {
+  @apply h-5 w-5;
+}
+
+.iconBellActive {
+  @apply h-5 w-5 fill-current;
+}
+
+.iconDenied {
+  @apply h-4 w-4 text-red-400;
+}
+
+.active {
+  @apply text-primary hover:text-primary/80;
+}
+
+.inactive {
+  @apply text-gray-400 hover:text-gray-900;
+}

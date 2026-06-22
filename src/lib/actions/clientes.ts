@@ -1,8 +1,9 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
+import { requireAdmin } from "@/lib/auth-server";
 import type {
     Cliente,
     CreateResponse,
@@ -27,16 +28,18 @@ interface CrearClienteInput {
  */
 export async function obtenerClientes(): Promise<Cliente[]> {
     try {
+        await requireAdmin();
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             [Query.orderDesc("createdAt"), Query.limit(100)]
         );
 
         return response.documents as unknown as Cliente[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo clientes:", error);
-        throw new Error(error.message || "Error al obtener clientes");
+        const errorMessage = error instanceof Error ? error.message : "Error al obtener clientes";
+        throw new Error(errorMessage);
     }
 }
 
@@ -45,16 +48,18 @@ export async function obtenerClientes(): Promise<Cliente[]> {
  */
 export async function obtenerCliente(id: string): Promise<Cliente> {
     try {
+        await requireAdmin();
         const cliente = await databases.getDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             id
         );
 
         return cliente as unknown as Cliente;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo cliente:", error);
-        throw new Error(error.message || "Error al obtener cliente");
+        const errorMessage = error instanceof Error ? error.message : "Error al obtener cliente";
+        throw new Error(errorMessage);
     }
 }
 
@@ -66,7 +71,7 @@ export async function obtenerClientePorEmail(
 ): Promise<Cliente | null> {
     try {
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             [Query.equal("email", email), Query.limit(1)]
         );
@@ -76,16 +81,16 @@ export async function obtenerClientePorEmail(
         }
 
         return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.warn("Index query failed for email, attempting memory fallback:", error);
         // Fallback: Si falla el índice (ej: faltan permisos o index), buscar en los últimos 100 clientes
         try {
             const fallbackList = await databases.listDocuments(
-                DATABASE_ID,
+                getDatabaseId(),
                 COLLECTIONS.CLIENTES,
                 [Query.orderDesc("$createdAt"), Query.limit(100)]
             );
-            const found = fallbackList.documents.find((doc: any) =>
+            const found = fallbackList.documents.find((doc) =>
                 doc.email?.trim().toLowerCase() === email?.trim().toLowerCase()
             );
             return (found as unknown as Cliente) || null;
@@ -104,7 +109,7 @@ export async function obtenerClientePorTelefono(
 ): Promise<Cliente | null> {
     try {
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             [Query.equal("telefono", telefono), Query.limit(1)]
         );
@@ -114,11 +119,11 @@ export async function obtenerClientePorTelefono(
         }
 
         return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.warn("Index query failed for phone, attempting memory fallback:", error);
         try {
             const fallbackList = await databases.listDocuments(
-                DATABASE_ID,
+                getDatabaseId(),
                 COLLECTIONS.CLIENTES,
                 [Query.orderDesc("$createdAt"), Query.limit(100)]
             );
@@ -126,8 +131,8 @@ export async function obtenerClientePorTelefono(
             const cleanPhone = (p: string) => p?.replace(/\D/g, "") || "";
             const targetPhone = cleanPhone(telefono);
 
-            const found = fallbackList.documents.find((doc: any) =>
-                cleanPhone(doc.telefono) === targetPhone
+            const found = fallbackList.documents.find((doc) =>
+                cleanPhone(doc.telefono as string) === targetPhone
             );
             return (found as unknown as Cliente) || null;
         } catch (fallbackError) {
@@ -161,7 +166,7 @@ export async function crearCliente(
         };
 
         const newCliente = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             ID.unique(),
             clienteData
@@ -171,11 +176,12 @@ export async function crearCliente(
             success: true,
             data: newCliente as unknown as Cliente,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creando cliente:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al crear cliente";
         return {
             success: false,
-            error: error.message || "Error al crear cliente",
+            error: errorMessage,
         };
     }
 }
@@ -189,18 +195,19 @@ export async function actualizarCliente(
 ): Promise<UpdateResponse> {
     try {
         await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             id,
             data
         );
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error actualizando cliente:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al actualizar cliente";
         return {
             success: false,
-            error: error.message || "Error al actualizar cliente",
+            error: errorMessage,
         };
     }
 }
@@ -211,34 +218,29 @@ export async function actualizarCliente(
  */
 export async function recalcularServiciosCliente(clienteId: string): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
-        console.log(`🔄 Recalculando servicios para cliente: ${clienteId}`);
-
-        // Contar citas completadas de este cliente
         const citasCompletadas = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             [
-                Query.equal('estado', 'COMPLETADA'),
+                Query.equal('estado', 'completada'),
                 Query.equal('clienteId', clienteId)
             ]
         );
 
         const count = citasCompletadas.total;
-        console.log(`📊 Cliente ${clienteId}: ${count} servicios completados`);
 
-        // Actualizar el contador
         await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             clienteId,
             { serviciosCompletados: count }
         );
 
-        console.log(`✅ Cliente ${clienteId} actualizado: serviciosCompletados = ${count}`);
         return { success: true, count };
-    } catch (error: any) {
-        console.error(`❌ Error recalculando servicios de cliente ${clienteId}:`, error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error(`Error recalculando servicios de cliente ${clienteId}:`, error);
+        const errorMessage = error instanceof Error ? error.message : "Error al recalcular servicios";
+        return { success: false, error: errorMessage };
     }
 }
 /**
@@ -247,13 +249,14 @@ export async function recalcularServiciosCliente(clienteId: string): Promise<{ s
 export async function eliminarCliente(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         await databases.deleteDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CLIENTES,
             id
         );
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error eliminando cliente:", error);
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar cliente";
+        return { success: false, error: errorMessage };
     }
 }

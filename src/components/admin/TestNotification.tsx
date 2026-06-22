@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { sendNotification } from "@/lib/actions/notifications";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { BellRing, Loader2, CheckCircle2 } from "lucide-react";
-import { toast } from "sonner"; // Assuming sonner or similar toast is used, or alerts
+import { toast } from "sonner";
+import styles from "./test-notification.module.css";
 
 export function TestNotification() {
     const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export function TestNotification() {
                 setTimeout(() => setSuccess(false), 3000);
             } else {
                 console.error("Error envío:", result.error);
-                alert("Error enviando notificación");
+                toast.error("Error enviando notificación");
             }
         } catch (error) {
             console.error("Error:", error);
@@ -43,14 +44,14 @@ export function TestNotification() {
             disabled={loading}
             variant="outline"
             size="sm"
-            className="gap-2"
+            className={styles.button}
         >
             {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className={styles.iconLoading} />
             ) : success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className={styles.iconSuccess} />
             ) : (
-                <BellRing className="h-4 w-4" />
+                <BellRing className={styles.icon} />
             )}
             {success ? "Enviado" : "Probar Push"}
         </Button>

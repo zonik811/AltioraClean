@@ -69,8 +69,9 @@ export default function NuevoEmpleadoPage() {
                 setError(response.error || "Error al crear empleado");
                 toast.error("Error al crear empleado");
             }
-        } catch (err: any) {
-            setError(err.message || "Error al crear empleado");
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "Error al crear empleado";
+            setError(errorMessage);
             toast.error("Error inesperado");
         } finally {
             setLoading(false);

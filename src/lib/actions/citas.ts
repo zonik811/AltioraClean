@@ -1,8 +1,9 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
+import { requireAdmin, requireAuth } from "@/lib/auth-server";
 import {
     EstadoCita,
     TipoPropiedad,
@@ -28,6 +29,7 @@ import { crearDireccion } from "@/lib/actions/direcciones";
  */
 export async function obtenerCitas(filtros?: FiltrosCitas): Promise<Cita[]> {
     try {
+        await requireAdmin();
         const queries: string[] = [];
 
         if (filtros?.estado) {
@@ -59,18 +61,19 @@ export async function obtenerCitas(filtros?: FiltrosCitas): Promise<Cita[]> {
         queries.push(Query.limit(100));
 
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             queries
         );
 
-        return response.documents.map((doc) => ({
-            id: doc.$id,
+        return response.documents.map((doc: Record<string, unknown>) => ({
+            id: doc.$id as string,
             ...doc,
         })) as unknown as Cita[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo citas:", error);
-        throw new Error(error.message || "Error al obtener citas");
+        const errorMessage = error instanceof Error ? error.message : "Error al obtener citas";
+        throw new Error(errorMessage);
     }
 }
 
@@ -79,8 +82,14 @@ export async function obtenerCitas(filtros?: FiltrosCitas): Promise<Cita[]> {
  */
 export async function obtenerMisCitas(email: string): Promise<Cita[]> {
     try {
+        const authResult = await requireAuth();
+        // Si no hay sesión, permitir ver las citas del email proporcionado
+        // (la verificación real se hace en el layout del cliente)
+        if (authResult && authResult.email !== email) {
+            return [];
+        }
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             [
                 Query.equal("clienteEmail", email),
@@ -88,11 +97,11 @@ export async function obtenerMisCitas(email: string): Promise<Cita[]> {
             ]
         );
 
-        return response.documents.map((doc) => ({
-            id: doc.$id,
+        return response.documents.map((doc: Record<string, unknown>) => ({
+            id: doc.$id as string,
             ...doc,
         })) as unknown as Cita[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo mis citas:", error);
         return [];
     }
@@ -103,16 +112,18 @@ export async function obtenerMisCitas(email: string): Promise<Cita[]> {
  */
 export async function obtenerCita(id: string): Promise<Cita> {
     try {
+        await requireAuth();
         const cita = await databases.getDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             id
         );
 
         return cita as unknown as Cita;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo cita:", error);
-        throw new Error(error.message || "Error al obtener cita");
+        const errorMessage = error instanceof Error ? error.message : "Error al obtener cita";
+        throw new Error(errorMessage);
     }
 }
 
@@ -166,36 +177,21 @@ export async function crearCita(
         // 1. Hay clienteId
         // 2. Hay dirección y ciudad válidas  
         // 3. El usuario NO seleccionó una dirección guardada (no viene direccionId)
-        const isUsingExistingAddress = !!(data as any).direccionId;
-
-        console.log("🔍 DEBUG - Address save decision:", {
-            hasClienteId: !!clienteId,
-            isUsingExistingAddress: isUsingExistingAddress,
-            direccionId: (data as any).direccionId,
-            willSaveAddress: clienteId && data.direccion && data.ciudad && !isUsingExistingAddress
-        });
+        const isUsingExistingAddress = !!((data as unknown as Record<string, unknown>).direccionId);
 
         if (clienteId && data.direccion && data.ciudad && !isUsingExistingAddress) {
             try {
-                console.log("✅ Creating NEW address");
-
-                const result = await crearDireccion({
+                await crearDireccion({
                     clienteId: clienteId,
                     nombre: `${data.tipoPropiedad} - ${data.direccion}`,
                     direccion: data.direccion,
                     ciudad: data.ciudad,
-                    barrio: (data as any).barrio,
+                    barrio: (data as unknown as Record<string, unknown>).barrio as string | undefined,
                     tipo: data.tipoPropiedad
                 });
-
-                console.log("📍 Dirección saved result:", result);
             } catch (direccionError) {
-                console.error("❌ Error guardando dirección (non-blocking):", direccionError);
+                console.error("Error guardando dirección:", direccionError);
             }
-        } else if (isUsingExistingAddress) {
-            console.log("ℹ️ Using existing saved address, skipping creation");
-        } else {
-            console.warn("⚠️ Skipping address save - missing required fields");
         }
 
         const citaData = {
@@ -226,7 +222,7 @@ export async function crearCita(
         };
 
         const newCita = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             ID.unique(),
             citaData
@@ -234,10 +230,10 @@ export async function crearCita(
 
         // Actualizar estadísticas del cliente
         if (clienteId) {
-            await databases.getDocument(DATABASE_ID, COLLECTIONS.CLIENTES, clienteId)
-                .then(async (cliente: any) => {
+            await databases.getDocument(getDatabaseId(), COLLECTIONS.CLIENTES, clienteId)
+                .then(async (cliente) => {
                     await actualizarCliente(clienteId!, {
-                        totalServicios: cliente.totalServicios + 1,
+                        totalServicios: (cliente.totalServicios || 0) + 1,
                     });
                 })
                 .catch(() => { });
@@ -247,11 +243,12 @@ export async function crearCita(
             success: true,
             data: newCita as unknown as Cita,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creando cita:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al crear cita";
         return {
             success: false,
-            error: error.message || "Error al crear cita",
+            error: errorMessage,
         };
     }
 }
@@ -264,13 +261,14 @@ export async function actualizarCita(
     data: ActualizarCitaInput
 ): Promise<UpdateResponse> {
     try {
-        const updateData: any = {
+        await requireAdmin();
+        const updateData: Record<string, unknown> = {
             ...data,
             updatedAt: new Date().toISOString(),
         };
 
         // Get current appointment state BEFORE updating
-        const currentCita = await databases.getDocument(DATABASE_ID, COLLECTIONS.CITAS, id);
+        const currentCita = await databases.getDocument(getDatabaseId(), COLLECTIONS.CITAS, id);
         const wasAlreadyCompleted = currentCita.estado === EstadoCita.COMPLETADA;
 
         // Si se completa la cita (y NO estaba completada antes), agregar fecha de completado y calcular puntos
@@ -283,48 +281,41 @@ export async function actualizarCita(
                 const precioServicio = currentCita.precioCliente || currentCita.precioAcordado || 0;
 
                 if (currentCita.clienteId) {
-                    console.log("✅ About to register points for client:", currentCita.clienteId);
-                    const puntosResult = await registrarPuntos({
+                    await registrarPuntos({
                         clienteId: currentCita.clienteId,
-                        puntos: 1, // 1 punto por servicio
+                        puntos: 1,
                         motivo: `Servicio Completado: ${descripcionServicio}`,
                         referenciaId: id,
                         precioServicio: precioServicio
                     });
-                    console.log("📊 Points registration result:", puntosResult);
                 }
 
                 // 3. Actualizar contador de servicios de empleados asignados
                 if (currentCita.empleadosAsignados && Array.isArray(currentCita.empleadosAsignados)) {
                     for (const empleadoId of currentCita.empleadosAsignados) {
                         try {
-                            const empleado = await databases.getDocument(DATABASE_ID, COLLECTIONS.EMPLEADOS, empleadoId);
+                            const empleado = await databases.getDocument(getDatabaseId(), COLLECTIONS.EMPLEADOS, empleadoId);
                             await databases.updateDocument(
-                                DATABASE_ID,
+                                getDatabaseId(),
                                 COLLECTIONS.EMPLEADOS,
                                 empleadoId,
                                 {
                                     serviciosRealizados: (empleado.serviciosRealizados || 0) + 1
                                 }
                             );
-                            console.log(`✅ Updated employee ${empleadoId} service count`);
                         } catch (empError) {
                             console.warn(`Error updating employee ${empleadoId}:`, empError);
                         }
                     }
-                } else {
-                    console.warn("⚠️ No employees assigned to this appointment");
                 }
             } catch (errorPuntos) {
-                console.error("❌ ERROR registrando puntos en actualizarCita:", errorPuntos);
+                console.error("Error registrando puntos en actualizarCita:", errorPuntos);
             }
-        } else if (data.estado === EstadoCita.COMPLETADA && wasAlreadyCompleted) {
-            console.log("ℹ️ Appointment was already completed, skipping points registration to avoid duplicates");
         }
 
         // Update the appointment
         await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.CITAS,
             id,
             updateData
@@ -341,15 +332,12 @@ export async function actualizarCita(
             // Combinar ambos sets y eliminar duplicados
             const allAffectedEmpleados = [...new Set([...oldEmpleados, ...newEmpleados])];
 
-            console.log(`🔄 Recalculando ${allAffectedEmpleados.length} empleados afectados por cambio de asignación`);
-
-            // Recalcular cada empleado afectado
             for (const empleadoId of allAffectedEmpleados) {
                 try {
                     const { recalcularServiciosEmpleado } = await import('./empleados');
                     await recalcularServiciosEmpleado(empleadoId);
                 } catch (recalcError) {
-                    console.warn(`⚠️ Error recalculando empleado ${empleadoId}:`, recalcError);
+                    console.warn(`Error recalculando empleado ${empleadoId}:`, recalcError);
                 }
             }
         }
@@ -360,16 +348,17 @@ export async function actualizarCita(
                 const { recalcularServiciosCliente } = await import('./clientes');
                 await recalcularServiciosCliente(currentCita.clienteId);
             } catch (recalcError) {
-                console.warn(`⚠️ Error recalculando cliente:`, recalcError);
+                console.warn(`Error recalculando cliente:`, recalcError);
             }
         }
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error actualizando cita:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al actualizar cita";
         return {
             success: false,
-            error: error.message || "Error al actualizar cita",
+            error: errorMessage,
         };
     }
 }

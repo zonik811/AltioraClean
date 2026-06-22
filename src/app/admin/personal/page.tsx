@@ -14,6 +14,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { TableSkeleton } from "@/components/admin/table-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Search, Users as UsersIcon, ChevronRight, Filter, Eye } from "lucide-react";
 import { obtenerEmpleados } from "@/lib/actions/empleados";
 import { obtenerURLArchivo } from "@/lib/appwrite";
@@ -25,8 +27,11 @@ export default function PersonalPage() {
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [empleadosFiltrados, setEmpleadosFiltrados] = useState<Empleado[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [busqueda, setBusqueda] = useState("");
     const [filtro, setFiltro] = useState<"todos" | "activos" | "inactivos">("activos");
+    const [cursor, setCursor] = useState<string | undefined>(undefined);
+    const [hasMore, setHasMore] = useState(false);
 
     useEffect(() => {
         cargarEmpleados();
@@ -39,12 +44,29 @@ export default function PersonalPage() {
     const cargarEmpleados = async () => {
         try {
             setLoading(true);
-            const data = await obtenerEmpleados();
-            setEmpleados(data);
+            const data = await obtenerEmpleados(undefined, { limit: 20 });
+            setEmpleados(data.documents);
+            setCursor(data.nextCursor);
+            setHasMore(data.hasMore);
         } catch (error) {
             console.error("Error cargando empleados:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const cargarMas = async () => {
+        if (!cursor || !hasMore) return;
+        try {
+            setLoadingMore(true);
+            const data = await obtenerEmpleados(undefined, { limit: 20, cursor });
+            setEmpleados(prev => [...prev, ...data.documents]);
+            setCursor(data.nextCursor);
+            setHasMore(data.hasMore);
+        } catch (error) {
+            console.error("Error cargando más empleados:", error);
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -69,14 +91,7 @@ export default function PersonalPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-900 border-t-transparent" />
-                    <p className="text-sm text-gray-500 font-medium">Cargando equipo...</p>
-                </div>
-            </div>
-        );
+        return <TableSkeleton rows={6} columns={5} hasAvatar />;
     }
 
     return (
@@ -127,25 +142,24 @@ export default function PersonalPage() {
             {/* Employee Table */}
             <Card className="border border-gray-200 shadow-sm bg-white overflow-hidden rounded-xl">
                 {empleadosFiltrados.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="bg-gray-50 p-4 rounded-full shadow-inner inline-block mb-4">
-                            <UsersIcon className="h-10 w-10 text-gray-300" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No se encontraron empleados</h3>
-                        <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                            {busqueda
-                                ? `No hay resultados para "${busqueda}"`
-                                : "Tu equipo está vacío. Comienza agregando un nuevo empleado."}
-                        </p>
-                        {!busqueda && (
-                            <Link href="/admin/personal/nuevo">
-                                <Button variant="outline" className="mt-6 border-gray-300">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Registrar Primer Empleado
-                                </Button>
-                            </Link>
-                        )}
-                    </div>
+                    <EmptyState
+                        variant={busqueda ? "search" : "employees"}
+                        title={busqueda ? "Sin resultados" : "No hay empleados"}
+                        description={
+                            busqueda
+                                ? `No se encontraron empleados para "${busqueda}". Intenta con otro nombre o documento.`
+                                : "Tu equipo está vacío. Comienza agregando a tu primer empleado."
+                        }
+                        action={!busqueda ? {
+                            label: "Registrar Primer Empleado",
+                            href: "/admin/personal/nuevo"
+                        } : undefined}
+                        secondaryAction={busqueda ? {
+                            label: "Limpiar búsqueda",
+                            onClick: () => setBusqueda("")
+                        } : undefined}
+                        className="border-0"
+                    />
                 ) : (
                     <div className="overflow-x-auto">
                         <Table>
@@ -235,6 +249,26 @@ export default function PersonalPage() {
                     </div>
                 )}
             </Card>
+
+            {hasMore && (
+                <div className="flex justify-center mt-6">
+                    <Button
+                        variant="outline"
+                        onClick={cargarMas}
+                        disabled={loadingMore}
+                        className="min-w-[150px]"
+                    >
+                        {loadingMore ? (
+                            <>
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                                Cargando...
+                            </>
+                        ) : (
+                            "Cargar más"
+                        )}
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

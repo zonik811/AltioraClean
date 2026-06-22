@@ -1,5 +1,6 @@
 "use client";
 
+import { EmployeeDetailSkeleton } from "@/components/admin/employee-detail-skeleton";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -198,14 +199,7 @@ export default function PerfilEmpleadoPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-gray-50/50">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-500 font-medium">Cargando perfil...</p>
-                </div>
-            </div>
-        );
+        return <EmployeeDetailSkeleton />;
     }
 
     if (!empleado) return <div>Empleado no encontrado</div>;

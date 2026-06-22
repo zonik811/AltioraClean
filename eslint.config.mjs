@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scripts are standalone utilities (CommonJS by design)
+    "scripts/**",
+    // Public contains auto-generated PWA files (workbox, sw.js)
+    "public/**",
   ]),
 ]);
 

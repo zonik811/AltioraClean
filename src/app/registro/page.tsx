@@ -53,17 +53,15 @@ export default function RegistroPage() {
             // 3. Iniciar sesión automáticamente
             await login(formData.email, formData.password);
 
-            // 4. Iniciar sesión automáticamente
-            await login(formData.email, formData.password);
-
             // La redirección será manejada por el useEffect en el layout o página protegida, 
             // pero para UX inmediata:
             // router.push("/portal/dashboard"); 
             // Dejamos que el useAuth y el useEffect hagan su magia.
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message || "Error al registrarse. Intenta nuevamente.");
+            const errorMessage = err instanceof Error ? err.message : "Error al registrarse. Intenta nuevamente.";
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

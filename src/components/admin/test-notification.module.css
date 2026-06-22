@@ -1,0 +1,17 @@
+@reference "../../app/globals.css";
+
+.button {
+  @apply gap-2;
+}
+
+.icon {
+  @apply h-4 w-4;
+}
+
+.iconSuccess {
+  @apply h-4 w-4 text-green-500;
+}
+
+.iconLoading {
+  @apply h-4 w-4 animate-spin;
+}

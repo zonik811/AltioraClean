@@ -1,8 +1,9 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
+import { requireAdmin } from "@/lib/auth-server";
 
 export interface RegistrarPagoInput {
     empleadoId: string;
@@ -38,8 +39,9 @@ export interface Pago {
  */
 export async function obtenerPagosEmpleado(empleadoId: string): Promise<Pago[]> {
     try {
+        await requireAdmin();
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_EMPLEADOS,
             [
                 Query.equal('empleadoId', empleadoId),
@@ -49,7 +51,7 @@ export async function obtenerPagosEmpleado(empleadoId: string): Promise<Pago[]> 
         );
 
         return response.documents as unknown as Pago[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo pagos:", error);
         return [];
     }
@@ -60,6 +62,7 @@ export async function obtenerPagosEmpleado(empleadoId: string): Promise<Pago[]> 
  */
 export async function registrarPago(data: RegistrarPagoInput): Promise<{ success: boolean; data?: Pago; error?: string }> {
     try {
+        await requireAdmin();
         const pagoData = {
             ...data,
             estado: data.estado || 'pagado',
@@ -67,17 +70,17 @@ export async function registrarPago(data: RegistrarPagoInput): Promise<{ success
         };
 
         const newPago = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_EMPLEADOS,
             ID.unique(),
             pagoData
         );
 
-        console.log(`✅ Pago registrado: $${data.monto} para empleado ${data.empleadoId}`);
         return { success: true, data: newPago as unknown as Pago };
-    } catch (error: any) {
-        console.error("❌ Error registrando pago:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error registrando pago:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al registrar pago";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -86,16 +89,17 @@ export async function registrarPago(data: RegistrarPagoInput): Promise<{ success
  */
 export async function eliminarPago(pagoId: string): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireAdmin();
         await databases.deleteDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.PAGOS_EMPLEADOS,
             pagoId
         );
 
-        console.log(`✅ Pago eliminado: ${pagoId}`);
         return { success: true };
-    } catch (error: any) {
-        console.error("❌ Error eliminando pago:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error eliminando pago:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar pago";
+        return { success: false, error: errorMessage };
     }
 }

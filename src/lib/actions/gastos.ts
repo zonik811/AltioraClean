@@ -1,8 +1,10 @@
 "use server";
 
 import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
+import { requireAdmin } from "@/lib/auth-server";
+import type { Gasto } from "@/types";
 
 export interface RegistrarGastoInput {
     categoria: string;
@@ -15,19 +17,6 @@ export interface RegistrarGastoInput {
     notas?: string;
 }
 
-export interface Gasto {
-    $id: string;
-    categoria: string;
-    concepto: string;
-    monto: number;
-    metodoPago: string;
-    proveedor?: string;
-    fecha: string;
-    comprobante?: string;
-    notas?: string;
-    createdAt: string;
-}
-
 /**
  * Obtiene todos los gastos con filtros opcionales
  */
@@ -37,6 +26,7 @@ export async function obtenerGastos(filters?: {
     fechaFin?: string;
 }): Promise<Gasto[]> {
     try {
+        await requireAdmin();
         const queries = [
             Query.orderDesc('fecha'),
             Query.limit(100)
@@ -55,12 +45,12 @@ export async function obtenerGastos(filters?: {
         }
 
         const response = await databases.listDocuments(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.GASTOS,
             queries
         );
         return response.documents as unknown as Gasto[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error obteniendo gastos:", error);
         return [];
     }
@@ -71,23 +61,24 @@ export async function obtenerGastos(filters?: {
  */
 export async function registrarGasto(data: RegistrarGastoInput): Promise<{ success: boolean; data?: Gasto; error?: string }> {
     try {
+        await requireAdmin();
         const gastoData = {
             ...data,
             createdAt: new Date().toISOString()
         };
 
         const newGasto = await databases.createDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.GASTOS,
             ID.unique(),
             gastoData
         );
 
-        console.log(`✅ Gasto registrado: $${data.monto} - ${data.concepto}`);
         return { success: true, data: newGasto as unknown as Gasto };
-    } catch (error: any) {
-        console.error("❌ Error registrando gasto:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error registrando gasto:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al registrar gasto";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -96,18 +87,19 @@ export async function registrarGasto(data: RegistrarGastoInput): Promise<{ succe
  */
 export async function actualizarGasto(gastoId: string, data: Partial<RegistrarGastoInput>): Promise<{ success: boolean; data?: Gasto; error?: string }> {
     try {
+        await requireAdmin();
         const updatedGasto = await databases.updateDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.GASTOS,
             gastoId,
             data
         );
 
-        console.log(`✅ Gasto actualizado: ${gastoId}`);
         return { success: true, data: updatedGasto as unknown as Gasto };
-    } catch (error: any) {
-        console.error("❌ Error actualizando gasto:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error actualizando gasto:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al actualizar gasto";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -116,16 +108,17 @@ export async function actualizarGasto(gastoId: string, data: Partial<RegistrarGa
  */
 export async function eliminarGasto(gastoId: string): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireAdmin();
         await databases.deleteDocument(
-            DATABASE_ID,
+            getDatabaseId(),
             COLLECTIONS.GASTOS,
             gastoId
         );
-        console.log(`✅ Gasto eliminado: ${gastoId}`);
         return { success: true };
-    } catch (error: any) {
-        console.error("❌ Error eliminando gasto:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error("Error eliminando gasto:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar gasto";
+        return { success: false, error: errorMessage };
     }
 }
 

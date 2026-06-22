@@ -186,14 +186,15 @@ export interface PagoEmpleado {
 
 export interface Gasto {
     $id: string;
-    categoria: string; // "transporte", "materiales", etc.
+    categoria: string;
     concepto: string;
     monto: number;
-    metodoPago: string; // "efectivo", "transferencia", etc.
+    metodoPago: string;
     proveedor?: string;
-    fecha: string; // ISO Date "YYYY-MM-DD"
+    comprobante?: string;
+    fecha: string;
     notas?: string;
-    creadoPor?: string; // Admin ID
+    creadoPor?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -374,3 +375,25 @@ export type DeleteResponse = {
     success: boolean;
     error?: string;
 };
+
+export type AppwriteDocument = {
+    $id: string;
+    $createdAt: string;
+    $updatedAt: string;
+    $permissions: string[];
+    $databaseId: string;
+    $collectionId: string;
+    [key: string]: unknown;
+};
+
+export interface PaginatedResponse<T> {
+    documents: T[];
+    total: number;
+    hasMore: boolean;
+    nextCursor?: string;
+}
+
+export interface PaginationParams {
+    limit?: number;
+    cursor?: string;
+}

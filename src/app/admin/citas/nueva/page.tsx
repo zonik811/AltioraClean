@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { crearCita } from "@/lib/actions/citas";
-import { obtenerEmpleados } from "@/lib/actions/empleados";
+import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
 import { obtenerClientes } from "@/lib/actions/clientes";
 import { TipoPropiedad, MetodoPago, type Empleado, type Cliente } from "@/types";
 import { calcularDuracionEstimada } from "@/lib/utils/precio-calculator";
@@ -77,7 +77,7 @@ export default function NuevaCitaPage() {
     const cargarDatos = async () => {
         try {
             const [empleadosData, clientesData] = await Promise.all([
-                obtenerEmpleados({ activo: true }),
+                obtenerTodosLosEmpleados({ activo: true }),
                 obtenerClientes(),
             ]);
             setEmpleados(empleadosData);
@@ -111,8 +111,9 @@ export default function NuevaCitaPage() {
             } else {
                 setError(response.error || "Error al crear la cita");
             }
-        } catch (err: any) {
-            setError(err.message || "Error al crear la cita");
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "Error al crear la cita";
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

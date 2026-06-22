@@ -4,26 +4,30 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
+import styles from "./mobile-sidebar.module.css";
 
 export const MobileSidebar = () => {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
 
-    // Close sidebar when route changes
-    useEffect(() => {
+    const handleOpenChange = (isOpen: boolean) => {
+        setOpen(isOpen);
+    };
+
+    if (open && pathname) {
         setOpen(false);
-    }, [pathname]);
+    }
 
     return (
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Sheet open={open} onOpenChange={handleOpenChange}>
             <SheetTrigger asChild>
-                <Button variant="ghost" className="lg:hidden pr-4 hover:bg-transparent">
-                    <Menu className="h-8 w-8 text-primary" />
+                <Button variant="ghost" className={styles.triggerBtn}>
+                    <Menu className={styles.menuIcon} />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 bg-slate-900 border-r-slate-800 w-72">
+            <SheetContent side="left" className={styles.sheetContent}>
                 <Sidebar />
             </SheetContent>
         </Sheet>

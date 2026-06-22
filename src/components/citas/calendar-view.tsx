@@ -3,28 +3,34 @@
 import { useState } from "react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Cita, EstadoCita } from "@/types";
+import { Cita, EstadoCita, Empleado } from "@/types";
 import { nombreCompleto } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import Link from "next/link";
+import styles from "./calendar-view.module.css";
 
 interface CalendarViewProps {
     citas: Cita[];
-    empleadosMap: Record<string, any>; // Map of employee ID to employee object
+    empleadosMap: Record<string, Empleado>;
 }
 
 type ViewMode = "month" | "week";
+
+const estadoStyles: Partial<Record<EstadoCita, string>> = {
+    [EstadoCita.PENDIENTE]: "bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200",
+    [EstadoCita.CONFIRMADA]: "bg-blue-100 border-blue-200 text-blue-700 hover:bg-blue-200",
+    [EstadoCita.COMPLETADA]: "bg-emerald-100 border-emerald-200 text-emerald-700 hover:bg-emerald-200",
+    [EstadoCita.CANCELADA]: "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200",
+};
 
 export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<ViewMode>("month");
 
-    // Navigation handlers
     const next = () => {
         if (viewMode === "month") {
             setCurrentDate(addMonths(currentDate, 1));
@@ -43,7 +49,6 @@ export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
 
     const today = () => setCurrentDate(new Date());
 
-    // Generate days for the grid
     const days = viewMode === "month"
         ? eachDayOfInterval({
             start: startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 }),
@@ -56,57 +61,40 @@ export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
 
     const getCitasForDay = (date: Date) => {
         const dateStr = format(date, "yyyy-MM-dd");
-        // Debug first day of month to avoid providing too many logs
-        if (date.getDate() === 1) {
-            console.log("Checking date:", dateStr, "Available Citas:", citas.length, citas[0]?.fechaCita);
-        }
         return citas.filter(cita => {
             return cita.fechaCita && cita.fechaCita.split("T")[0] === dateStr;
         }).sort((a, b) => a.horaCita.localeCompare(b.horaCita));
     };
 
-    const getEstadoColor = (estado: EstadoCita) => {
-        switch (estado) {
-            case EstadoCita.PENDIENTE: return "bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200";
-            case EstadoCita.CONFIRMADA: return "bg-blue-100 border-blue-200 text-blue-700 hover:bg-blue-200";
-            case EstadoCita.COMPLETADA: return "bg-emerald-100 border-emerald-200 text-emerald-700 hover:bg-emerald-200";
-            case EstadoCita.CANCELADA: return "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200";
-            default: return "bg-gray-100 border-gray-200 text-gray-700";
-        }
-    };
-
     return (
-        <div className="space-y-4">
-            {/* Calendar Header */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={prev} className="h-8 w-8">
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <div className={styles.navGroup}>
+                    <Button variant="outline" size="icon" onClick={prev} className={styles.navButton}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <h2 className="text-lg font-semibold w-48 text-center capitalize">
+                    <h2 className={styles.title}>
                         {format(currentDate, viewMode === "month" ? "MMMM yyyy" : "'Semana del' d", { locale: es })}
                     </h2>
-                    <Button variant="outline" size="icon" onClick={next} className="h-8 w-8">
+                    <Button variant="outline" size="icon" onClick={next} className={styles.navButton}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className={styles.controls}>
                     <Button variant="ghost" onClick={today} className="text-sm">
                         Hoy
                     </Button>
-                    <div className="bg-gray-100 p-1 rounded-lg flex">
+                    <div className={styles.viewToggle}>
                         <button
                             onClick={() => setViewMode("month")}
-                            className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${viewMode === "month" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
-                                }`}
+                            className={`${styles.viewToggleBtn} ${viewMode === "month" ? styles.viewToggleActive : styles.viewToggleInactive}`}
                         >
                             Mes
                         </button>
                         <button
                             onClick={() => setViewMode("week")}
-                            className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${viewMode === "week" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
-                                }`}
+                            className={`${styles.viewToggleBtn} ${viewMode === "week" ? styles.viewToggleActive : styles.viewToggleInactive}`}
                         >
                             Semana
                         </button>
@@ -114,17 +102,16 @@ export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
                 </div>
             </div>
 
-            {/* Calendar Grid */}
-            <Card className="overflow-hidden border-gray-200 shadow-sm">
-                <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+            <Card className={styles.gridCard}>
+                <div className={styles.dayHeaders}>
                     {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(day => (
-                        <div key={day} className="py-2 text-center text-sm font-medium text-gray-500">
+                        <div key={day} className={styles.dayHeader}>
                             {day}
                         </div>
                     ))}
                 </div>
 
-                <div className={`grid grid-cols-7 ${viewMode === "month" ? "auto-rows-[minmax(120px,auto)]" : "h-[600px]"}`}>
+                <div className={`${styles.grid} ${viewMode === "month" ? styles.gridMonth : styles.gridWeek}`}>
                     {days.map((day, idx) => {
                         const dayCitas = getCitasForDay(day);
                         const isToday = isSameDay(day, new Date());
@@ -134,51 +121,41 @@ export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
                             <div
                                 key={day.toString()}
                                 className={`
-                                    min-h-[120px] p-2 border-b border-r border-gray-100 relative transition-colors
-                                    ${!isCurrentMonth && viewMode === "month" ? "bg-gray-50/50" : "bg-white"}
+                                    ${styles.dayCell}
+                                    ${!isCurrentMonth && viewMode === "month" ? styles.dayCellOutside : styles.dayCellInside}
                                     ${idx % 7 === 6 ? "border-r-0" : ""}
-                                    hover:bg-gray-50
                                 `}
                             >
                                 <div className="flex justify-between items-start mb-2">
-                                    <span className={`
-                                        text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full
-                                        ${isToday ? "bg-primary text-primary-foreground" : "text-gray-700"}
-                                    `}>
+                                    <span className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : styles.dayNumberNormal}`}>
                                         {format(day, "d")}
                                     </span>
-                                    {dayCitas.length > 0 && <span className="text-xs text-gray-400 font-medium">{dayCitas.length} citas</span>}
+                                    {dayCitas.length > 0 && <span className={styles.citaCount}>{dayCitas.length} citas</span>}
                                 </div>
 
                                 <div className="space-y-1.5">
                                     {dayCitas.map(cita => (
                                         <Link href={`/admin/citas/${cita.$id}`} key={cita.$id}>
-                                            <div
-                                                className={`
-                                                    group px-2 py-1.5 rounded-md border text-xs cursor-pointer transition-all hover:shadow-md
-                                                    ${getEstadoColor(cita.estado)}
-                                                `}
-                                            >
-                                                <div className="flex items-center justify-between mb-0.5">
-                                                    <span className="font-bold flex items-center gap-1">
-                                                        <Clock className="h-3 w-3 opacity-70" />
+                                            <div className={`${styles.citaItem} ${estadoStyles[cita.estado] || ""}`}>
+                                                <div className={styles.citaHeader}>
+                                                    <span className={styles.citaTime}>
+                                                        <Clock className={styles.citaTimeIcon} />
                                                         {cita.horaCita}
                                                     </span>
                                                 </div>
-                                                <div className="font-medium truncate" title={cita.clienteNombre}>
+                                                <div className={styles.citaClient} title={cita.clienteNombre}>
                                                     {cita.clienteNombre}
                                                 </div>
 
-                                                {/* Employee Avatars Mini */}
                                                 {cita.empleadosAsignados && cita.empleadosAsignados.length > 0 && (
-                                                    <div className="flex -space-x-1 mt-1.5">
+                                                    <div className={styles.avatarGroup}>
                                                         {cita.empleadosAsignados.slice(0, 3).map((empId, i) => {
                                                             const emp = empleadosMap[empId];
                                                             if (!emp) return null;
                                                             return (
-                                                                <Avatar key={i} className="h-4 w-4 border border-white ring-1 ring-black/5">
-                                                                    <AvatarImage src={obtenerURLArchivo(emp.foto)} />
-                                                                    <AvatarFallback className="text-[6px] bg-gray-200">
+                                                                <Avatar key={i} className={styles.avatarMini}>
+                                                                    {emp.foto && <AvatarImage src={obtenerURLArchivo(emp.foto)} />}
+                                                                    <AvatarFallback className={styles.avatarFallbackMini}>
                                                                         {emp.nombre?.[0]}{emp.apellido?.[0]}
                                                                     </AvatarFallback>
                                                                 </Avatar>

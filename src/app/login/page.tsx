@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
+import { safeLogin } from "@/lib/appwrite";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login, role, loading: authLoading } = useAuth();
+    const { checkAuth, role, loading: authLoading } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -48,10 +49,20 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            await login(email, password);
-            // La redirección es manejada por el useEffect
-        } catch (err: any) {
-            setError(err.message || "Error al iniciar sesión");
+            console.log("=== INICIANDO LOGIN CON safeLogin ===");
+            
+            // Usar safeLogin que limpia todas las sesiones antes
+            await safeLogin(email, password);
+            console.log("✓ Login exitoso, verificando auth...");
+            
+            // Verificar autenticación después del login
+            await checkAuth();
+            console.log("✓ Auth verificada");
+            
+        } catch (err: unknown) {
+            console.error("✗ Error en login:", err);
+            const errorMessage = err instanceof Error ? err.message : "Error al iniciar sesión";
+            setError(errorMessage);
             setLoading(false);
         }
     };
@@ -113,7 +124,7 @@ export default function LoginPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="password" className="text-gray-700 font-medium">Contraseña</Label>
-                                    <a href="#" className="text-xs text-primary hover:underline font-medium">
+                                    <a href="/recuperar" className="text-xs text-primary hover:underline font-medium">
                                         ¿Olvidaste tu contraseña?
                                     </a>
                                 </div>

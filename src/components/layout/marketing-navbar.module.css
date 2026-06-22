@@ -1,0 +1,145 @@
+@reference "../../app/globals.css";
+
+.nav {
+  @apply fixed top-0 left-0 right-0 z-50 transition-all duration-300;
+}
+
+.navScrolled {
+  @apply bg-white/90 backdrop-blur-md shadow-md py-3;
+}
+
+.navTransparent {
+  @apply bg-transparent py-5;
+}
+
+.container {
+  @apply container mx-auto px-4;
+}
+
+.inner {
+  @apply flex items-center justify-between;
+}
+
+.logo {
+  @apply flex items-center gap-2;
+}
+
+.logoIcon {
+  @apply p-2 rounded-xl transition-colors;
+}
+
+.logoIconScrolled {
+  @apply bg-primary/10;
+}
+
+.logoIconTransparent {
+  @apply bg-white/20 backdrop-blur-sm;
+}
+
+.logoIconSvg {
+  @apply w-6 h-6;
+}
+
+.logoIconSvgScrolled {
+  @apply text-primary;
+}
+
+.logoIconSvgTransparent {
+  @apply text-white;
+}
+
+.logoText {
+  @apply font-bold text-xl;
+}
+
+.logoTextScrolled {
+  @apply text-gray-900;
+}
+
+.logoTextTransparent {
+  @apply text-white;
+}
+
+.logoHighlight {
+  @apply text-secondary;
+}
+
+.logoHighlightTransparent {
+  @apply text-white/90;
+}
+
+.desktopNav {
+  @apply hidden md:flex items-center gap-8;
+}
+
+.navLink {
+  @apply font-medium hover:text-secondary transition-colors;
+}
+
+.navLinkScrolled {
+  @apply text-gray-600;
+}
+
+.navLinkTransparent {
+  @apply text-white/90 hover:text-white;
+}
+
+.desktopActions {
+  @apply hidden md:flex items-center gap-4;
+}
+
+.ghostBtn {
+  @apply font-medium;
+}
+
+.ghostBtnScrolled {
+  @apply text-gray-600 hover:text-primary hover:bg-primary/5;
+}
+
+.ghostBtnTransparent {
+  @apply text-white hover:text-white hover:bg-white/20;
+}
+
+.primaryBtn {
+  @apply font-medium shadow-lg hover:translate-y-[-2px] transition-all;
+}
+
+.primaryBtnScrolled {
+  @apply bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/25;
+}
+
+.primaryBtnTransparent {
+  @apply bg-white text-primary hover:bg-white/90;
+}
+
+.mobileMenuBtn {
+  @apply md:hidden p-2;
+}
+
+.mobileMenuIcon {
+  @apply w-6 h-6;
+}
+
+.mobileMenuIconScrolled {
+  @apply text-gray-900;
+}
+
+.mobileMenuIconTransparent {
+  @apply text-white;
+}
+
+.mobileMenu {
+  @apply md:hidden absolute top-full left-0 right-0 bg-white border-t p-4 shadow-xl animate-in slide-in-from-top-2;
+}
+
+.mobileLinks {
+  @apply flex flex-col gap-4;
+}
+
+.mobileLink {
+  @apply text-gray-600 font-medium py-2 hover:text-primary;
+}
+
+.mobileDivider {
+  @apply my-2;
+}

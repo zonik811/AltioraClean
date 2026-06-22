@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Menu, X, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import styles from "./marketing-navbar.module.css";
 
 export function MarketingNavbar() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -26,108 +27,74 @@ export function MarketingNavbar() {
     ];
 
     return (
-        <nav
-            className={cn(
-                "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-                isScrolled
-                    ? "bg-white/90 backdrop-blur-md shadow-md py-3"
-                    : "bg-transparent py-5"
-            )}
-        >
-            <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <div className={cn(
-                            "p-2 rounded-xl transition-colors",
-                            isScrolled ? "bg-primary/10" : "bg-white/20 backdrop-blur-sm"
-                        )}>
-                            <Sparkles className={cn(
-                                "w-6 h-6",
-                                isScrolled ? "text-primary" : "text-white"
-                            )} />
+        <nav className={cn(styles.nav, isScrolled ? styles.navScrolled : styles.navTransparent)}>
+            <div className={styles.container}>
+                <div className={styles.inner}>
+                    <Link href="/" className={styles.logo}>
+                        <div className={cn(styles.logoIcon, isScrolled ? styles.logoIconScrolled : styles.logoIconTransparent)}>
+                            <Sparkles className={cn(styles.logoIconSvg, isScrolled ? styles.logoIconSvgScrolled : styles.logoIconSvgTransparent)} />
                         </div>
-                        <span className={cn(
-                            "font-bold text-xl",
-                            isScrolled ? "text-gray-900" : "text-white"
-                        )}>
-                            Altiora<span className={cn(isScrolled ? "text-secondary" : "text-white/90")}>Clean</span>
+                        <span className={cn(styles.logoText, isScrolled ? styles.logoTextScrolled : styles.logoTextTransparent)}>
+                            Altiora<span className={isScrolled ? styles.logoHighlight : styles.logoHighlightTransparent}>Clean</span>
                         </span>
                     </Link>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center gap-8">
+                    <div className={styles.desktopNav}>
                         {navLinks.map((link) => (
                             <Link
                                 key={link.name}
                                 href={link.href}
-                                className={cn(
-                                    "font-medium hover:text-secondary transition-colors",
-                                    isScrolled ? "text-gray-600" : "text-white/90 hover:text-white"
-                                )}
+                                className={cn(styles.navLink, isScrolled ? styles.navLinkScrolled : styles.navLinkTransparent)}
                             >
                                 {link.name}
                             </Link>
                         ))}
                     </div>
 
-                    {/* Actions */}
-                    <div className="hidden md:flex items-center gap-4">
+                    <div className={styles.desktopActions}>
                         <Link href="/login">
                             <Button
                                 variant="ghost"
-                                className={cn(
-                                    "font-medium",
-                                    isScrolled ? "text-gray-600 hover:text-primary hover:bg-primary/5" : "text-white hover:text-white hover:bg-white/20"
-                                )}
+                                className={cn(styles.ghostBtn, isScrolled ? styles.ghostBtnScrolled : styles.ghostBtnTransparent)}
                             >
                                 <LogIn className="w-4 h-4 mr-2" />
                                 Ingresar
                             </Button>
                         </Link>
                         <Link href="/agendar">
-                            <Button
-                                className={cn(
-                                    "font-medium shadow-lg hover:translate-y-[-2px] transition-all",
-                                    isScrolled
-                                        ? "bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/25"
-                                        : "bg-white text-primary hover:bg-white/90"
-                                )}
-                            >
+                            <Button className={cn(styles.primaryBtn, isScrolled ? styles.primaryBtnScrolled : styles.primaryBtnTransparent)}>
                                 Agendar Cita
                             </Button>
                         </Link>
                     </div>
 
-                    {/* Mobile Menu Button */}
                     <button
-                        className="md:hidden p-2"
+                        className={styles.mobileMenuBtn}
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     >
                         {isMobileMenuOpen ? (
-                            <X className={cn("w-6 h-6", isScrolled ? "text-gray-900" : "text-white")} />
+                            <X className={cn(styles.mobileMenuIcon, isScrolled ? styles.mobileMenuIconScrolled : styles.mobileMenuIconTransparent)} />
                         ) : (
-                            <Menu className={cn("w-6 h-6", isScrolled ? "text-gray-900" : "text-white")} />
+                            <Menu className={cn(styles.mobileMenuIcon, isScrolled ? styles.mobileMenuIconScrolled : styles.mobileMenuIconTransparent)} />
                         )}
                     </button>
                 </div>
             </div>
 
-            {/* Mobile Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 right-0 bg-white border-t p-4 shadow-xl animate-in slide-in-from-top-2">
-                    <div className="flex flex-col gap-4">
+                <div className={styles.mobileMenu}>
+                    <div className={styles.mobileLinks}>
                         {navLinks.map((link) => (
                             <Link
                                 key={link.name}
                                 href={link.href}
-                                className="text-gray-600 font-medium py-2 hover:text-primary"
+                                className={styles.mobileLink}
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
                                 {link.name}
                             </Link>
                         ))}
-                        <hr className="my-2" />
+                        <hr className={styles.mobileDivider} />
                         <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                             <Button variant="ghost" className="w-full justify-start">
                                 <LogIn className="w-4 h-4 mr-2" />

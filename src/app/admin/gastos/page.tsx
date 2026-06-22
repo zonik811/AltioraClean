@@ -17,7 +17,8 @@ import {
     X
 } from "lucide-react";
 import { TestNotification } from "@/components/admin/TestNotification";
-import { obtenerGastos, registrarGasto, actualizarGasto, obtenerGastosPorCategoria, type Gasto } from "@/lib/actions/gastos";
+import { obtenerGastos, registrarGasto, actualizarGasto, obtenerGastosPorCategoria } from "@/lib/actions/gastos";
+import type { Gasto } from "@/types";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import {
     BarChart,

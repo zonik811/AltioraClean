@@ -1,0 +1,125 @@
+@reference "../../app/globals.css";
+
+.container {
+  @apply space-y-4;
+}
+
+.header {
+  @apply flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm;
+}
+
+.navGroup {
+  @apply flex items-center gap-2;
+}
+
+.navButton {
+  @apply h-8 w-8;
+}
+
+.title {
+  @apply text-lg font-semibold w-48 text-center capitalize;
+}
+
+.controls {
+  @apply flex items-center gap-2;
+}
+
+.viewToggle {
+  @apply bg-gray-100 p-1 rounded-lg flex;
+}
+
+.viewToggleActive {
+  @apply bg-white shadow-sm text-gray-900;
+}
+
+.viewToggleInactive {
+  @apply text-gray-500 hover:text-gray-700;
+}
+
+.viewToggleBtn {
+  @apply px-3 py-1 text-sm font-medium rounded-md transition-all;
+}
+
+.gridCard {
+  @apply overflow-hidden border-gray-200 shadow-sm;
+}
+
+.dayHeaders {
+  @apply grid grid-cols-7 border-b border-gray-200 bg-gray-50;
+}
+
+.dayHeader {
+  @apply py-2 text-center text-sm font-medium text-gray-500;
+}
+
+.grid {
+  @apply grid grid-cols-7;
+}
+
+.gridMonth {
+  @apply auto-rows-[minmax(120px,auto)];
+}
+
+.gridWeek {
+  @apply h-[600px];
+}
+
+.dayCell {
+  @apply min-h-[120px] p-2 border-b border-r border-gray-100 relative transition-colors hover:bg-gray-50;
+}
+
+.dayCellOutside {
+  @apply bg-gray-50/50;
+}
+
+.dayCellInside {
+  @apply bg-white;
+}
+
+.dayNumber {
+  @apply text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full;
+}
+
+.dayNumberToday {
+  @apply bg-primary text-primary-foreground;
+}
+
+.dayNumberNormal {
+  @apply text-gray-700;
+}
+
+.citaCount {
+  @apply text-xs text-gray-400 font-medium;
+}
+
+.citaItem {
+  @apply px-2 py-1.5 rounded-md border text-xs cursor-pointer transition-all hover:shadow-md;
+}
+
+.citaHeader {
+  @apply flex items-center justify-between mb-0.5;
+}
+
+.citaTime {
+  @apply font-bold flex items-center gap-1;
+}
+
+.citaTimeIcon {
+  @apply h-3 w-3 opacity-70;
+}
+
+.citaClient {
+  @apply font-medium truncate;
+}
+
+.avatarGroup {
+  @apply flex -space-x-1 mt-1.5;
+}
+
+.avatarMini {
+  @apply h-4 w-4 border border-white ring-1 ring-black/5;
+}
+
+.avatarFallbackMini {
+  @apply text-[6px] bg-gray-200;
+}

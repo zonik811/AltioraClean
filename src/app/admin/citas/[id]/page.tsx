@@ -1,5 +1,6 @@
 "use client";
 
+import { AppointmentDetailSkeleton } from "@/components/admin/appointment-detail-skeleton";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +28,7 @@ import {
     Copy
 } from "lucide-react";
 import { obtenerCita, cambiarEstadoCita, asignarEmpleados } from "@/lib/actions/citas";
-import { obtenerEmpleados } from "@/lib/actions/empleados";
+import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
 import { formatearFecha, formatearPrecio, nombreCompleto } from "@/lib/utils";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import { EstadoCita, type Cita, type Empleado } from "@/types";
@@ -51,7 +52,7 @@ export default function DetalleCitaPage() {
             setLoading(true);
             const [citaData, empleadosData] = await Promise.all([
                 obtenerCita(citaId),
-                obtenerEmpleados({ activo: true }),
+                obtenerTodosLosEmpleados({ activo: true }),
             ]);
             setCita(citaData);
             setEmpleadosSeleccionados(citaData.empleadosAsignados || []);
@@ -116,14 +117,7 @@ export default function DetalleCitaPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <p className="text-sm text-gray-500 font-medium">Cargando detalles...</p>
-                </div>
-            </div>
-        );
+        return <AppointmentDetailSkeleton />;
     }
 
     if (!cita) {

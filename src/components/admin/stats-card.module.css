@@ -1,0 +1,41 @@
+@reference "../../app/globals.css";
+
+.card {
+  @apply border-2;
+}
+
+.cardHeader {
+  @apply flex flex-row items-center justify-between space-y-0 pb-2;
+}
+
+.cardTitle {
+  @apply text-sm font-medium text-gray-600;
+}
+
+.iconWrapper {
+  @apply p-2 rounded-lg;
+}
+
+.icon {
+  @apply h-5 w-5;
+}
+
+.value {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+.description {
+  @apply text-xs text-gray-600 mt-1;
+}
+
+.trendContainer {
+  @apply flex items-center mt-2;
+}
+
+.trendValue {
+  @apply text-xs font-medium;
+}
+
+.trendLabel {
+  @apply text-xs text-gray-500 ml-2;
+}

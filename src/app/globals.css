@@ -1,20 +1,33 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-primary: #0EA5E9;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #10B981;
+  --color-secondary-foreground: #FFFFFF;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-muted: oklch(0.967 0.001 286.375);
+  --color-muted-foreground: oklch(0.552 0.016 285.938);
+  --color-accent: oklch(0.967 0.001 286.375);
+  --color-accent-foreground: oklch(0.212 0.034 285.938);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.212 0.034 285.938);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.212 0.034 285.938);
+  --color-border: oklch(0.922 0.004 286.375);
+  --color-input: oklch(0.922 0.004 286.375);
+  --color-ring: #0EA5E9;
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.212 0.034 285.938);
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+}
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
     --radius: 0.5rem;
   }
 
