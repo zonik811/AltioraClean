@@ -31,41 +31,26 @@ import {
 import Link from "next/link";
 import { crearCita } from "@/lib/actions/citas";
 import { obtenerDireccionesCliente } from "@/lib/actions/direcciones";
+import { obtenerServiciosPublicos } from "@/lib/actions/servicios";
 import { TipoPropiedad, MetodoPago, Direccion } from "@/types";
+import type { Servicio, CategoriaServicio } from "@/types";
 import { calcularDuracionEstimada } from "@/lib/utils/precio-calculator";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useFormValidation } from "@/lib/hooks/use-form-validation";
 
-const SERVICIOS = [
-    {
-        id: "limpieza-basica",
-        nombre: "Limpieza Básica",
-        descripcion: "Limpieza general de espacios. Ideal para mantenimiento regular.",
-        icon: Sparkles,
-        precioBase: 80000,
-        duracionBase: 90,
-        color: "from-sky-500 to-blue-600",
-    },
-    {
-        id: "limpieza-profunda",
-        nombre: "Limpieza Profunda",
-        descripcion: "Limpieza exhaustiva con desinfección. Perfecta para limpieza estacional.",
-        icon: Zap,
-        precioBase: 150000,
-        duracionBase: 180,
-        color: "from-emerald-500 to-green-600",
-        popular: true,
-    },
-    {
-        id: "limpieza-especializada",
-        nombre: "Limpieza Especializada",
-        descripcion: "Servicio premium con productos especializados y técnicas avanzadas.",
-        icon: Building2,
-        precioBase: 200000,
-        duracionBase: 240,
-        color: "from-purple-500 to-violet-600",
-    },
-];
+const ICONOS_SERVICIO: Record<string, React.ComponentType<{ className?: string }>> = {
+    residencial: Sparkles,
+    comercial: Building2,
+    especializado: Zap,
+};
+
+const COLORES_SERVICIO: Record<string, string> = {
+    residencial: "from-sky-500 to-blue-600",
+    comercial: "from-emerald-500 to-green-600",
+    especializado: "from-purple-500 to-violet-600",
+};
+
+const SERVICIOS_POPULARES = ["limpieza-profunda", "profunda"];
 
 const METODOS_PAGO = [
     { value: MetodoPago.EFECTIVO, label: "Efectivo", icon: Banknote },
@@ -78,11 +63,13 @@ export default function AgendarPage() {
     const router = useRouter();
     const { user, profile } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [loadingServicios, setLoadingServicios] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [completedSteps, setCompletedSteps] = useState<number[]>([]);
     const [showSummary, setShowSummary] = useState(false);
+    const [servicios, setServicios] = useState<Servicio[]>([]);
 
     const validation = useFormValidation({
         clienteNombre: { required: true, minLength: 3 },
@@ -148,6 +135,21 @@ export default function AgendarPage() {
         fetchAddresses();
     }, [profile]);
 
+    useEffect(() => {
+        const fetchServicios = async () => {
+            try {
+                setLoadingServicios(true);
+                const data = await obtenerServiciosPublicos();
+                setServicios(data);
+            } catch {
+                // Error silencioso — los servicios se mostrarán vacíos
+            } finally {
+                setLoadingServicios(false);
+            }
+        };
+        fetchServicios();
+    }, []);
+
     const handleAddressChange = (addressId: string) => {
         setSelectedAddressId(addressId);
         if (addressId === "new") {
@@ -171,8 +173,8 @@ export default function AgendarPage() {
     };
 
     const selectedServicio = useMemo(
-        () => SERVICIOS.find((s) => s.id === formData.servicioId),
-        [formData.servicioId]
+        () => servicios.find((s) => s.$id === formData.servicioId),
+        [servicios, formData.servicioId]
     );
 
     const precioEstimado = useMemo(() => {
@@ -207,17 +209,17 @@ export default function AgendarPage() {
 
     const duracionEstimada = useMemo(() => {
         if (!selectedServicio) return 90;
-        return calcularDuracionEstimada({
+        return selectedServicio.duracionEstimada || calcularDuracionEstimada({
             tipoPropiedad: formData.tipoPropiedad,
             metrosCuadrados: formData.metrosCuadrados,
             habitaciones: formData.habitaciones,
-            tipoServicio: formData.servicioId.includes("profunda")
+            tipoServicio: selectedServicio.slug.includes("profunda")
                 ? "profundo"
-                : formData.servicioId.includes("especializada")
+                : selectedServicio.slug.includes("especializada")
                   ? "especializado"
                   : "basico",
         });
-    }, [selectedServicio, formData.tipoPropiedad, formData.metrosCuadrados, formData.habitaciones, formData.servicioId]);
+    }, [selectedServicio, formData.tipoPropiedad, formData.metrosCuadrados, formData.habitaciones]);
 
     const validateStep = (step: number): boolean => {
         switch (step) {
@@ -462,43 +464,51 @@ export default function AgendarPage() {
                                     </CardHeader>
                                     <CardContent className="pt-6">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            {SERVICIOS.map((servicio) => {
-                                                const Icon = servicio.icon;
-                                                const isSelected = formData.servicioId === servicio.id;
-                                                return (
-                                                    <button
-                                                        key={servicio.id}
-                                                        type="button"
-                                                        onClick={() => setFormData({ ...formData, servicioId: servicio.id })}
-                                                        className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${isSelected
-                                                            ? "border-primary bg-primary/5 shadow-lg scale-[1.02]"
-                                                            : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-md"
-                                                            }`}
-                                                    >
-                                                        {servicio.popular && (
-                                                            <Badge className="absolute -top-2 right-3 bg-secondary text-white text-xs">
-                                                                Popular
-                                                            </Badge>
-                                                        )}
-                                                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${servicio.color} flex items-center justify-center mb-3`}>
-                                                            <Icon className="h-5 w-5 text-white" />
-                                                        </div>
-                                                        <h3 className="font-bold text-gray-900 text-sm">{servicio.nombre}</h3>
-                                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{servicio.descripcion}</p>
-                                                        <div className="mt-3 flex items-center justify-between">
-                                                            <span className="text-lg font-bold text-primary">
-                                                                ${servicio.precioBase.toLocaleString("es-CO")}
-                                                            </span>
-                                                            <span className="text-xs text-gray-400">~{servicio.duracionBase} min</span>
-                                                        </div>
-                                                        {isSelected && (
-                                                            <div className="absolute top-2 left-2">
-                                                                <CheckCircle2 className="h-5 w-5 text-primary" />
+                                            {loadingServicios ? (
+                                                <div className="col-span-3 text-center py-8 text-gray-500">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                                    Cargando servicios...
+                                                </div>
+                                            ) : (
+                                                servicios.map((servicio) => {
+                                                    const Icon = ICONOS_SERVICIO[servicio.categoria] || Sparkles;
+                                                    const isSelected = formData.servicioId === servicio.$id;
+                                                    const esPopular = SERVICIOS_POPULARES.some((s) => servicio.slug.includes(s));
+                                                    return (
+                                                        <button
+                                                            key={servicio.$id}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, servicioId: servicio.$id })}
+                                                            className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${isSelected
+                                                                ? "border-primary bg-primary/5 shadow-lg scale-[1.02]"
+                                                                : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-md"
+                                                                }`}
+                                                        >
+                                                            {esPopular && (
+                                                                <Badge className="absolute -top-2 right-3 bg-secondary text-white text-xs">
+                                                                    Popular
+                                                                </Badge>
+                                                            )}
+                                                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${COLORES_SERVICIO[servicio.categoria] || "from-sky-500 to-blue-600"} flex items-center justify-center mb-3`}>
+                                                                <Icon className="h-5 w-5 text-white" />
                                                             </div>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
+                                                            <h3 className="font-bold text-gray-900 text-sm">{servicio.nombre}</h3>
+                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{servicio.descripcionCorta}</p>
+                                                            <div className="mt-3 flex items-center justify-between">
+                                                                <span className="text-lg font-bold text-primary">
+                                                                    ${servicio.precioBase.toLocaleString("es-CO")}
+                                                                </span>
+                                                                <span className="text-xs text-gray-400">~{servicio.duracionEstimada} min</span>
+                                                            </div>
+                                                            {isSelected && (
+                                                                <div className="absolute top-2 left-2">
+                                                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>

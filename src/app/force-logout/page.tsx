@@ -11,31 +11,26 @@ export default function ForceLogoutPage() {
     useEffect(() => {
         const forceLogout = async () => {
             try {
-                console.log("Iniciando logout forzado...");
-                
                 // 1. Intentar listar y cerrar todas las sesiones
                 try {
                     const sessions = await account.listSessions();
-                    console.log(`Encontradas ${sessions.sessions.length} sesiones`);
                     
                     for (const session of sessions.sessions) {
                         try {
                             await account.deleteSession(session.$id);
-                            console.log(`Sesión ${session.$id} cerrada`);
                         } catch (err) {
                             console.warn(`Error cerrando sesión ${session.$id}:`, err);
                         }
                     }
                 } catch (err) {
-                    console.log("No se pudieron listar sesiones:", err);
+                    // No hay sesiones que listar
                 }
                 
                 // 2. Intentar cerrar sesión actual
                 try {
                     await account.deleteSession("current");
-                    console.log("Sesión actual cerrada");
                 } catch (err) {
-                    console.log("No hay sesión actual");
+                    // No hay sesión actual
                 }
                 
                 // 3. Limpiar cookies manualmente
@@ -43,11 +38,9 @@ export default function ForceLogoutPage() {
                     const cookieName = c.split("=")[0].trim();
                     document.cookie = cookieName + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
                 });
-                console.log("Cookies limpiadas");
                 
                 // 4. Limpiar localStorage
                 localStorage.clear();
-                console.log("localStorage limpiado");
                 
                 setStatus("✓ Sesión limpiada completamente");
                 

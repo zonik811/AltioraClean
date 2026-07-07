@@ -35,6 +35,24 @@ export interface Pago {
 }
 
 /**
+ * Obtiene un pago por ID
+ */
+export async function obtenerPagoPorId(id: string): Promise<Pago | null> {
+    try {
+        await requireAdmin();
+        const pago = await databases.getDocument(
+            getDatabaseId(),
+            COLLECTIONS.PAGOS_EMPLEADOS,
+            id
+        );
+        return pago as unknown as Pago;
+    } catch (error: unknown) {
+        console.error("Error obteniendo pago:", error);
+        return null;
+    }
+}
+
+/**
  * Obtiene el historial de pagos de un empleado
  */
 export async function obtenerPagosEmpleado(empleadoId: string): Promise<Pago[]> {
@@ -80,6 +98,26 @@ export async function registrarPago(data: RegistrarPagoInput): Promise<{ success
     } catch (error: unknown) {
         console.error("Error registrando pago:", error);
         const errorMessage = error instanceof Error ? error.message : "Error al registrar pago";
+        return { success: false, error: errorMessage };
+    }
+}
+
+/**
+ * Actualiza un pago existente
+ */
+export async function actualizarPago(id: string, data: Partial<RegistrarPagoInput>): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireAdmin();
+        await databases.updateDocument(
+            getDatabaseId(),
+            COLLECTIONS.PAGOS_EMPLEADOS,
+            id,
+            data
+        );
+        return { success: true };
+    } catch (error: unknown) {
+        console.error("Error actualizando pago:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al actualizar pago";
         return { success: false, error: errorMessage };
     }
 }

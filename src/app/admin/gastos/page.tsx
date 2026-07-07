@@ -17,7 +17,7 @@ import {
     X
 } from "lucide-react";
 import { TestNotification } from "@/components/admin/TestNotification";
-import { obtenerGastos, registrarGasto, actualizarGasto, obtenerGastosPorCategoria } from "@/lib/actions/gastos";
+import { obtenerTodosLosGastos, registrarGasto, actualizarGasto, obtenerGastosPorCategoria } from "@/lib/actions/gastos";
 import type { Gasto } from "@/types";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import {
@@ -87,7 +87,7 @@ export default function GastosPage() {
             }
 
             const [gastosData, stats] = await Promise.all([
-                obtenerGastos({
+                obtenerTodosLosGastos({
                     categoria: filtros.categoria,
                     fechaInicio,
                     fechaFin

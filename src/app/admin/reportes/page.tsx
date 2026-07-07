@@ -2,7 +2,7 @@
 
 import { ReportsSkeleton } from "@/components/admin/reports-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useToast } from "@/lib/hooks/use-toast";
+import { toast } from "sonner";
 import { useEffect, useState, useCallback } from "react";
 import {
     BarChart,
@@ -70,6 +70,7 @@ import {
 } from "@/lib/actions/reportes";
 import { formatearPrecio } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { tooltipContentStyle, labelStyle, itemStyle, GradientCard } from "@/components/admin/reportes/tooltip-styles";
 import {
     TrendingUp,
     TrendingDown,
@@ -102,7 +103,6 @@ const months = [
 ];
 
 export default function ReportesPage() {
-    const { error: toastError } = useToast();
     const [finanzas, setFinanzas] = useState<ReporteFinancieroMes[]>([]);
     const [servicios, setServicios] = useState<EstadisticaServicio[]>([]);
     const [personal, setPersonal] = useState<RendimientoEmpleado[]>([]);
@@ -202,12 +202,12 @@ export default function ReportesPage() {
             setConcentracion(concentracionData);
         } catch (error) {
             console.error("Error cargando reportes:", error);
-            toastError("Error", "No se pudieron cargar los reportes");
+            toast.error("No se pudieron cargar los reportes");
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [selectedYear, selectedMonth, toastError]);
+    }, [selectedYear, selectedMonth]);
 
     useEffect(() => {
         cargarDatos();
@@ -482,9 +482,7 @@ export default function ReportesPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* Flujo de Caja */}
                                 <div className="lg:col-span-2">
-                                    <Card className="relative overflow-hidden border-0 shadow-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
-                                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
+                                    <GradientCard accent="blue">
                                         <CardHeader className="relative z-10 border-b border-white/10">
                                             <CardTitle className="text-white flex items-center gap-2">
                                                 <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -508,15 +506,9 @@ export default function ReportesPage() {
                                                     />
                                                     <Tooltip
                                                         cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                                                        contentStyle={{
-                                                            borderRadius: "12px",
-                                                            border: "1px solid rgba(255,255,255,0.1)",
-                                                            background: "rgba(15,23,42,0.95)",
-                                                            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                                                            color: "#fff",
-                                                        }}
-                                                        labelStyle={{ color: "#94a3b8", fontSize: "12px" }}
-                                                        itemStyle={{ color: "#fff" }}
+                                                    contentStyle={tooltipContentStyle}
+                                                    labelStyle={labelStyle}
+                                                    itemStyle={itemStyle}
                                                         formatter={(value: unknown) => [formatearPrecio(value as number), ""]}
                                                     />
                                                     <Legend wrapperStyle={{ color: "#cbd5e1" }} />
@@ -533,9 +525,9 @@ export default function ReportesPage() {
                                                     <Bar dataKey="ingresos" name="Ingresos" fill="url(#gradIngresos)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                                                     <Bar dataKey="gastos" name="Gastos" fill="url(#gradGastos)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                                                 </BarChart>
-                                            </ResponsiveContainer>
-                                        </CardContent>
-                                    </Card>
+                                                </ResponsiveContainer>
+                                            </CardContent>
+                                    </GradientCard>
                                 </div>
 
                                 {/* Sidebar: Top Clientes + Distribución */}

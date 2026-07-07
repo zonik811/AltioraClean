@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { DashboardSkeleton } from "@/components/admin/skeletons";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useToast } from "@/lib/hooks/use-toast";
+import { toast } from "sonner";
 import {
     Calendar,
     Users,
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { obtenerCitasHoy, obtenerCitasSemana, obtenerCitas } from "@/lib/actions/citas";
 import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
-import { obtenerGastos } from "@/lib/actions/gastos";
+import { obtenerTodosLosGastos } from "@/lib/actions/gastos";
 import { formatearPrecio } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,6 @@ import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function AdminDashboard() {
-    const { error: toastError } = useToast();
     const [stats, setStats] = useState<EstadisticasDashboard>({
         citasHoy: 0,
         citasEstaSemana: 0,
@@ -71,7 +70,7 @@ export default function AdminDashboard() {
                 obtenerCitasSemana(),
                 obtenerTodosLosEmpleados({ activo: true }),
                 obtenerCitas({ fechaInicio: inicioMes.toISOString().split("T")[0] }),
-                obtenerGastos({
+                obtenerTodosLosGastos({
                     fechaInicio: inicioMes.toISOString().split("T")[0],
                     fechaFin: finMes.toISOString().split("T")[0],
                 }),
@@ -129,12 +128,12 @@ export default function AdminDashboard() {
             setLastUpdate(new Date());
         } catch (error) {
             console.error("Error cargando dashboard:", error);
-            toastError("Error", "No se pudieron cargar los datos del dashboard");
+            toast.error("No se pudieron cargar los datos del dashboard");
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [toastError]);
+    }, []);
 
     useEffect(() => {
         const hour = new Date().getHours();

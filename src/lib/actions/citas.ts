@@ -19,10 +19,82 @@ import type {
     FiltrosCitas,
     CreateResponse,
     UpdateResponse,
+    PaginatedResponse,
+    PaginationParams,
 } from "@/types";
 import { crearCliente, obtenerClientePorTelefono, actualizarCliente, obtenerClientePorEmail } from "@/lib/actions/clientes";
 import { registrarPuntos } from "@/lib/actions/puntos";
 import { crearDireccion } from "@/lib/actions/direcciones";
+
+/**
+ * Obtiene la lista de citas con paginación cursor-based
+ */
+export async function obtenerCitasPaginadas(
+    filtros?: FiltrosCitas,
+    paginacion?: PaginationParams
+): Promise<PaginatedResponse<Cita>> {
+    try {
+        await requireAdmin();
+        const queries: string[] = [];
+
+        if (filtros?.estado) {
+            queries.push(Query.equal("estado", filtros.estado));
+        }
+
+        if (filtros?.empleadoId) {
+            queries.push(Query.contains("empleadosAsignados", filtros.empleadoId));
+        }
+
+        if (filtros?.fechaInicio) {
+            queries.push(Query.greaterThanEqual("fechaCita", filtros.fechaInicio));
+        }
+
+        if (filtros?.fechaFin) {
+            queries.push(Query.lessThanEqual("fechaCita", filtros.fechaFin));
+        }
+
+        if (filtros?.clienteId) {
+            queries.push(Query.equal("clienteId", filtros.clienteId));
+        }
+
+        if (filtros?.pagadoPorCliente !== undefined) {
+            queries.push(Query.equal("pagadoPorCliente", filtros.pagadoPorCliente));
+        }
+
+        queries.push(Query.orderDesc("fechaCita"));
+
+        if (paginacion?.cursor) {
+            queries.push(Query.cursorAfter(paginacion.cursor));
+        }
+
+        const limit = paginacion?.limit || 20;
+        queries.push(Query.limit(limit + 1));
+
+        const response = await databases.listDocuments(
+            getDatabaseId(),
+            COLLECTIONS.CITAS,
+            queries
+        );
+
+        const documents = response.documents.map((doc: Record<string, unknown>) => ({
+            id: doc.$id as string,
+            ...doc,
+        })) as unknown as Cita[];
+
+        const hasMore = documents.length > limit;
+        if (hasMore) documents.pop();
+
+        return {
+            documents,
+            total: response.total,
+            hasMore,
+            nextCursor: hasMore ? documents[documents.length - 1]?.$id : undefined,
+        };
+    } catch (error: unknown) {
+        console.error("Error obteniendo citas paginadas:", error);
+        throw new Error(error instanceof Error ? error.message : "Error al obtener citas");
+    }
+}
 
 /**
  * Obtiene la lista de citas con filtros opcionales

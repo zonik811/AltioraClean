@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useToast } from "@/lib/hooks/use-toast";
+import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -101,7 +101,8 @@ function DashboardSkeleton() {
 export default function ClientDashboard() {
     const router = useRouter();
     const { user, profile } = useAuth();
-    const { success, error: toastError } = useToast();
+
+    if (!user) return null;
     const [citas, setCitas] = useState<Cita[]>([]);
     const [puntosHistory, setPuntosHistory] = useState<HistorialPuntos[]>([]);
     const [savedAddresses, setSavedAddresses] = useState<Direccion[]>([]);
@@ -138,15 +139,14 @@ export default function ClientDashboard() {
                         setSavedAddresses(addresses);
                     }
                 } catch (error) {
-                    console.error("Error fetching dashboard data:", error);
-                    toastError("Error", "No se pudieron cargar tus datos");
+                    toast.error("No se pudieron cargar tus datos");
                 } finally {
                     setLoading(false);
                 }
             }
         }
         fetchDashboardData();
-    }, [user, toastError]);
+    }, [user]);
 
     // Derived State
     const proximaCita = citas.find(c => ["pendiente", "confirmada", "en-progreso"].includes(c.estado));
@@ -191,12 +191,12 @@ export default function ClientDashboard() {
             const res = await eliminarDireccion(addressToDelete);
             if (res.success) {
                 setSavedAddresses(prev => prev.filter(addr => addr.$id !== addressToDelete));
-                success("Dirección eliminada", "La dirección ha sido eliminada correctamente");
+                toast.success("Dirección eliminada correctamente");
             } else {
-                toastError("Error", "No se pudo eliminar la dirección");
+                toast.error("No se pudo eliminar la dirección");
             }
         } catch {
-            toastError("Error", "Ocurrió un error al eliminar la dirección");
+            toast.error("Ocurrió un error al eliminar la dirección");
         } finally {
             setDeletingAddress(false);
             setDeleteDialogOpen(false);
@@ -221,7 +221,7 @@ export default function ClientDashboard() {
     const nextLevelInfo = getNextLevelInfo();
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>

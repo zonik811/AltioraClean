@@ -2,7 +2,7 @@
 
 import webpush from "web-push";
 import { databases } from "@/lib/appwrite-admin";
-import { getDatabaseId } from "@/lib/appwrite/config";
+import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
 
 // Configure web-push
@@ -24,8 +24,6 @@ try {
     console.warn("Failed to initialize Web Push (check VAPID keys):", error);
 }
 
-const COLLECTION_SUBSCRIPTIONS = "push_subscriptions"; // Ensure this matches your Appwrite Collection ID
-
 export interface PushSubscriptionData {
     endpoint: string;
     keys: {
@@ -42,14 +40,14 @@ export async function subscribeUser(subscription: PushSubscriptionData, userId?:
         // Check if subscription already exists (deduplication)
         const existing = await databases.listDocuments(
             getDatabaseId(),
-            COLLECTION_SUBSCRIPTIONS,
+            COLLECTIONS.PUSH_SUBSCRIPTIONS,
             [Query.equal("endpoint", subscription.endpoint)]
         );
 
         if (existing.documents.length > 0) {
             // Update userId if changed or just return success
             if (userId && existing.documents[0].userId !== userId) {
-                await databases.updateDocument(getDatabaseId(), COLLECTION_SUBSCRIPTIONS, existing.documents[0].$id, {
+                await databases.updateDocument(getDatabaseId(), COLLECTIONS.PUSH_SUBSCRIPTIONS, existing.documents[0].$id, {
                     userId: userId
                 });
             }
@@ -57,7 +55,7 @@ export async function subscribeUser(subscription: PushSubscriptionData, userId?:
         }
 
         // Create new
-        await databases.createDocument(getDatabaseId(), COLLECTION_SUBSCRIPTIONS, ID.unique(), {
+        await databases.createDocument(getDatabaseId(), COLLECTIONS.PUSH_SUBSCRIPTIONS, ID.unique(), {
             endpoint: subscription.endpoint,
             keys: JSON.stringify(subscription.keys),
             userId: userId || null,
@@ -78,12 +76,12 @@ export async function unsubscribeUser(endpoint: string) {
     try {
         const existing = await databases.listDocuments(
             getDatabaseId(),
-            COLLECTION_SUBSCRIPTIONS,
+            COLLECTIONS.PUSH_SUBSCRIPTIONS,
             [Query.equal("endpoint", endpoint)]
         );
 
         if (existing.documents.length > 0) {
-            await databases.deleteDocument(getDatabaseId(), COLLECTION_SUBSCRIPTIONS, existing.documents[0].$id);
+            await databases.deleteDocument(getDatabaseId(), COLLECTIONS.PUSH_SUBSCRIPTIONS, existing.documents[0].$id);
         }
         return { success: true };
     } catch (error) {
@@ -102,7 +100,7 @@ export async function sendNotification(message: string, title: string = "Notific
             filters.push(Query.equal("userId", userId));
         }
 
-        const subscriptions = await databases.listDocuments(getDatabaseId(), COLLECTION_SUBSCRIPTIONS, filters);
+        const subscriptions = await databases.listDocuments(getDatabaseId(), COLLECTIONS.PUSH_SUBSCRIPTIONS, filters);
 
         const payload = JSON.stringify({ title, body: message });
 
@@ -118,7 +116,7 @@ export async function sendNotification(message: string, title: string = "Notific
                 if (err && typeof err === "object" && "statusCode" in err) {
                     const statusCode = (err as { statusCode: number }).statusCode;
                     if (statusCode === 410 || statusCode === 404) {
-                        await databases.deleteDocument(getDatabaseId(), COLLECTION_SUBSCRIPTIONS, doc.$id);
+                        await databases.deleteDocument(getDatabaseId(), COLLECTIONS.PUSH_SUBSCRIPTIONS, doc.$id);
                     } else {
                         console.error("Error sending push:", err);
                     }

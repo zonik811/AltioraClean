@@ -8,6 +8,8 @@ import type {
     Cliente,
     CreateResponse,
     UpdateResponse,
+    PaginatedResponse,
+    PaginationParams,
     TipoCliente,
     FrecuenciaCliente,
 } from "@/types";
@@ -24,22 +26,44 @@ interface CrearClienteInput {
 }
 
 /**
- * Obtiene la lista de todos los clientes
+ * Obtiene la lista de clientes con paginación
  */
-export async function obtenerClientes(): Promise<Cliente[]> {
+export async function obtenerClientes(
+    pagination?: PaginationParams
+): Promise<PaginatedResponse<Cliente>> {
     try {
         await requireAdmin();
+        const queries: string[] = [Query.orderDesc("createdAt")];
+        const limit = pagination?.limit || 20;
+        queries.push(Query.limit(limit + 1));
+
+        if (pagination?.cursor) {
+            queries.push(Query.cursorAfter(pagination.cursor));
+        }
+
         const response = await databases.listDocuments(
             getDatabaseId(),
             COLLECTIONS.CLIENTES,
-            [Query.orderDesc("createdAt"), Query.limit(100)]
+            queries
         );
 
-        return response.documents as unknown as Cliente[];
+        const hasMore = response.documents.length > limit;
+        const documents = hasMore
+            ? response.documents.slice(0, limit)
+            : response.documents;
+
+        return {
+            documents: documents as unknown as Cliente[],
+            total: response.total,
+            hasMore,
+            nextCursor:
+                documents.length > 0
+                    ? documents[documents.length - 1].$id
+                    : undefined,
+        };
     } catch (error: unknown) {
         console.error("Error obteniendo clientes:", error);
-        const errorMessage = error instanceof Error ? error.message : "Error al obtener clientes";
-        throw new Error(errorMessage);
+        return { documents: [], total: 0, hasMore: false };
     }
 }
 
@@ -149,6 +173,7 @@ export async function crearCliente(
     data: CrearClienteInput
 ): Promise<CreateResponse<Cliente>> {
     try {
+        await requireAdmin();
         const clienteData = {
             nombre: data.nombre,
             telefono: data.telefono,

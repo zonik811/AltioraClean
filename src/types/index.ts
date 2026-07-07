@@ -165,25 +165,6 @@ export interface Cita {
     completedAt?: string;
 }
 
-export interface PagoEmpleado {
-    $id: string;
-    empleadoId: string;
-    empleado?: Empleado; // Populated
-    citaId?: string; // Si es pago por servicio específico
-    cita?: Cita; // Populated
-    periodo: string; // "2026-01" para pagos mensuales
-    concepto: ConceptoPago;
-    monto: number;
-    fechaPago?: string; // Cuando se pagó realmente
-    metodoPago: MetodoPago;
-    estado: EstadoPago;
-    comprobante?: string; // Storage ID de comprobante de pago
-    notas?: string;
-    creadoPor: string; // userId del admin que creó el registro
-    createdAt: string;
-    updatedAt: string;
-}
-
 export interface Gasto {
     $id: string;
     categoria: string;
@@ -272,18 +253,6 @@ export interface ActualizarCitaInput extends Partial<CrearCitaInput> {
     calificacionCliente?: number;
     resenaCliente?: string;
     horasTrabajadas?: number;
-}
-
-export interface RegistrarPagoInput {
-    empleadoId: string;
-    citaId?: string;
-    periodo?: string;
-    concepto: ConceptoPago;
-    monto: number;
-    fechaPago: string;
-    metodoPago: MetodoPago;
-    comprobante?: File;
-    notas?: string;
 }
 
 // Tipos para respuestas y estadísticas

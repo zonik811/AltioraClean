@@ -60,6 +60,7 @@ export const COLLECTIONS = {
     DIRECCIONES: 'direcciones',
     HISTORIAL_PUNTOS: 'historial_puntos',
     NOTIFICACIONES: 'notificaciones',
+    PUSH_SUBSCRIPTIONS: 'push_subscriptions',
 } as const;
 
 // Tipos derivados

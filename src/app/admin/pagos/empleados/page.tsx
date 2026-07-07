@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
     DollarSign,
     Calendar as CalendarIcon,
@@ -57,6 +59,7 @@ import {
 const COLORS = ['#10B981', '#3b82f6', '#f97316', '#eab308', '#8b5cf6', '#ef4444'];
 
 export default function PagosEmpleadosPage() {
+    const router = useRouter();
     const [pagos, setPagos] = useState<Pago[]>([]);
     const [filteredPagos, setFilteredPagos] = useState<Pago[]>([]);
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -108,6 +111,7 @@ export default function PagosEmpleadosPage() {
             setPagos(allPagos);
         } catch (error) {
             console.error("Error cargando datos:", error);
+            toast.error("Error al cargar los datos");
         } finally {
             setLoading(false);
         }
@@ -173,6 +177,7 @@ export default function PagosEmpleadosPage() {
         try {
             const result = await registrarPago(nuevoPago);
             if (result.success) {
+                toast.success("Pago registrado correctamente");
                 setShowDialog(false);
                 setNuevoPago({
                     empleadoId: "",
@@ -185,9 +190,12 @@ export default function PagosEmpleadosPage() {
                 });
                 setSelectedEmpleadoInfo(null);
                 cargarDatos();
+            } else {
+                toast.error(result.error || "Error al registrar pago");
             }
         } catch (error) {
             console.error("Error registrando pago:", error);
+            toast.error("Error al registrar pago");
         }
     };
 
@@ -196,9 +204,11 @@ export default function PagosEmpleadosPage() {
             try {
                 setLoading(true);
                 await eliminarPago(pagoId);
+                toast.success("Pago eliminado correctamente");
                 await cargarDatos();
             } catch (error) {
                 console.error("Error eliminando pago:", error);
+                toast.error("Error al eliminar el pago");
             } finally {
                 setLoading(false);
             }
@@ -386,7 +396,11 @@ export default function PagosEmpleadosPage() {
                                 filteredPagos.map((pago) => {
                                     const empleado = empleados.find(e => e.$id === pago.empleadoId);
                                     return (
-                                        <TableRow key={pago.$id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <TableRow
+                                            key={pago.$id}
+                                            className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                            onClick={() => router.push(`/admin/pagos/empleados/${pago.$id}`)}
+                                        >
                                             <TableCell className="pl-6">
                                                 <div className="flex items-center space-x-3">
                                                     <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs ring-2 ring-white shadow-sm">
@@ -425,7 +439,7 @@ export default function PagosEmpleadosPage() {
                                             <TableCell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 group-hover:text-gray-600">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 group-hover:text-gray-600" onClick={(e) => e.stopPropagation()}>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>

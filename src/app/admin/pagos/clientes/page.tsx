@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
     DollarSign,
     TrendingUp,
@@ -38,6 +40,7 @@ import {
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'];
 
 export default function PagosClientesPage() {
+    const router = useRouter();
     const [pagos, setPagos] = useState<PagoCliente[]>([]);
     const [filteredPagos, setFilteredPagos] = useState<PagoCliente[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -83,10 +86,11 @@ export default function PagosClientesPage() {
                 obtenerCitas()
             ]);
             setPagos(pagosData);
-            setClientes(clientesData);
+            setClientes(clientesData.documents);
             setCitas(citasData);
         } catch (error) {
             console.error("Error cargando datos:", error);
+            toast.error("Error al cargar los datos");
         } finally {
             setLoading(false);
         }
@@ -188,6 +192,7 @@ export default function PagosClientesPage() {
             });
 
             if (result.success) {
+                toast.success("Cobro registrado correctamente");
                 setShowDialog(false);
                 setSelectedClienteId("");
                 setCitasCliente([]);
@@ -200,7 +205,9 @@ export default function PagosClientesPage() {
                     notas: ""
                 });
                 setSelectedCitaInfo(null);
-                cargarDatos(); // Recargar para actualizar listas y estados
+                cargarDatos();
+            } else {
+                toast.error(result.error || "Error al registrar cobro");
             }
         } catch (error) {
             console.error("Error registrando pago:", error);
@@ -213,9 +220,11 @@ export default function PagosClientesPage() {
         try {
             setLoading(true);
             await eliminarPagoCliente(pagoId);
-            await cargarDatos(); // Recargar todo para recalcular
+            toast.success("Cobro eliminado correctamente");
+            await cargarDatos();
         } catch (error) {
             console.error("Error eliminando pago:", error);
+            toast.error("Error al eliminar el cobro");
         } finally {
             setLoading(false);
         }
@@ -418,7 +427,11 @@ export default function PagosClientesPage() {
                                     const clienteNombre = cita ? cita.clienteNombre : "Cliente Desconocido";
 
                                     return (
-                                        <TableRow key={pago.$id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <TableRow
+                                            key={pago.$id}
+                                            className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                            onClick={() => router.push(`/admin/pagos/clientes/${pago.$id}`)}
+                                        >
                                             <TableCell className="font-medium text-gray-900">{formatearFecha(pago.fechaPago)}</TableCell>
                                             <TableCell>
                                                 <div className="flex items-center space-x-2">
@@ -447,7 +460,7 @@ export default function PagosClientesPage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
-                                                    onClick={() => handleEliminarPago(pago.$id)}
+                                                    onClick={(e) => { e.stopPropagation(); handleEliminarPago(pago.$id); }}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

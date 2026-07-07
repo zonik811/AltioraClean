@@ -30,70 +30,88 @@ import {
     LayoutGrid,
     List
 } from "lucide-react";
-import { obtenerCitas } from "@/lib/actions/citas";
+import { obtenerCitasPaginadas, obtenerCitas } from "@/lib/actions/citas";
 import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
 import { formatearFecha, formatearPrecio, nombreCompleto } from "@/lib/utils";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import { EstadoCita, type Cita, type Empleado } from "@/types";
 import { CalendarView } from "@/components/citas/calendar-view";
+import { toast } from "sonner";
 
 export default function CitasPage() {
     const [citas, setCitas] = useState<Cita[]>([]);
+    const [citasVisibles, setCitasVisibles] = useState<Cita[]>([]);
     const [empleadosMap, setEmpleadosMap] = useState<Record<string, Empleado>>({});
-    const [citasFiltradas, setCitasFiltradas] = useState<Cita[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [cursor, setCursor] = useState<string | undefined>(undefined);
+    const [hasMore, setHasMore] = useState(false);
     const [busqueda, setBusqueda] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<EstadoCita | "todos">("todos");
     const [view, setView] = useState("list");
 
     useEffect(() => {
         cargarDatos();
-    }, []);
+    }, [filtroEstado]);
 
     useEffect(() => {
         filtrarCitas();
-    }, [citas, filtroEstado, busqueda]);
+    }, [citas, busqueda]);
 
     const cargarDatos = async () => {
         try {
             setLoading(true);
+            const filter = filtroEstado !== "todos" ? { estado: filtroEstado } : undefined;
             const [citasData, empleadosData] = await Promise.all([
-                obtenerCitas(),
+                obtenerCitasPaginadas(filter, { limit: 20 }),
                 obtenerTodosLosEmpleados()
             ]);
 
-            // Create a map for faster employee lookup
             const empMap: Record<string, Empleado> = {};
             empleadosData.forEach(emp => {
                 empMap[emp.$id] = emp;
             });
 
             setEmpleadosMap(empMap);
-            setCitas(citasData);
+            setCitas(citasData.documents);
+            setCursor(citasData.nextCursor);
+            setHasMore(citasData.hasMore);
         } catch (error) {
             console.error("Error cargando datos:", error);
+            toast.error("Error al cargar las citas");
         } finally {
             setLoading(false);
         }
     };
 
+    const cargarMas = async () => {
+        if (!cursor || !hasMore) return;
+        try {
+            setLoadingMore(true);
+            const filter = filtroEstado !== "todos" ? { estado: filtroEstado } : undefined;
+            const data = await obtenerCitasPaginadas(filter, { limit: 20, cursor });
+            setCitas(prev => [...prev, ...data.documents]);
+            setCursor(data.nextCursor);
+            setHasMore(data.hasMore);
+        } catch (error) {
+            console.error("Error cargando más citas:", error);
+            toast.error("Error al cargar más citas");
+        } finally {
+            setLoadingMore(false);
+        }
+    };
+
     const filtrarCitas = () => {
-        let filtradas = citas;
-
-        if (filtroEstado !== "todos") {
-            filtradas = filtradas.filter((c) => c.estado === filtroEstado);
+        if (!busqueda) {
+            setCitasVisibles(citas);
+            return;
         }
-
-        if (busqueda) {
-            const query = busqueda.toLowerCase();
-            filtradas = filtradas.filter((c) =>
-                c.clienteNombre.toLowerCase().includes(query) ||
-                c.direccion.toLowerCase().includes(query) ||
-                c.ciudad.toLowerCase().includes(query)
-            );
-        }
-
-        setCitasFiltradas(filtradas);
+        const query = busqueda.toLowerCase();
+        setCitasVisibles(citas.filter((c) =>
+            c.clienteNombre.toLowerCase().includes(query) ||
+            c.direccion.toLowerCase().includes(query) ||
+            c.ciudad.toLowerCase().includes(query)
+        ));
     };
 
     const getEstadoBadge = (estado: EstadoCita) => {
@@ -134,7 +152,7 @@ export default function CitasPage() {
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agenda de Servicios</h1>
                                 <p className="text-sm text-slate-300 mt-0.5">
-                                    Gestiona y visualiza todas tus citas programadas ({citasFiltradas.length})
+                                    Gestiona y visualiza todas tus citas programadas ({citasVisibles.length})
                                 </p>
                             </div>
                         </div>
@@ -201,7 +219,7 @@ export default function CitasPage() {
                 <TabsContent value="list" className="mt-0">
                     <Card className="relative overflow-hidden border-0 shadow-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
-                        {citasFiltradas.length === 0 ? (
+                        {citasVisibles.length === 0 ? (
                             <EmptyState
                                 variant={busqueda ? "search" : "appointments"}
                                 title={busqueda ? "Sin resultados" : "No hay citas"}
@@ -239,7 +257,7 @@ export default function CitasPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {citasFiltradas.map((cita) => (
+                                        {citasVisibles.map((cita) => (
                                             <TableRow key={cita.$id} className="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 group">
                                                 <TableCell className="pl-6 py-4">
                                                     <div className="flex flex-col">
@@ -320,11 +338,31 @@ export default function CitasPage() {
                                 </Table>
                             </div>
                         )}
+
+                        {hasMore && (
+                            <div className="flex justify-center py-6">
+                                <Button
+                                    variant="outline"
+                                    onClick={cargarMas}
+                                    disabled={loadingMore}
+                                    className="min-w-[150px]"
+                                >
+                                    {loadingMore ? (
+                                        <>
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                                            Cargando...
+                                        </>
+                                    ) : (
+                                        "Cargar más"
+                                    )}
+                                </Button>
+                            </div>
+                        )}
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="calendar" className="mt-0">
-                    <CalendarView citas={citasFiltradas} empleadosMap={empleadosMap} />
+                    <CalendarView citas={citasVisibles} empleadosMap={empleadosMap} />
                 </TabsContent>
             </Tabs>
         </div>

@@ -59,7 +59,6 @@ export default function RegistroPage() {
             // Dejamos que el useAuth y el useEffect hagan su magia.
 
         } catch (err: unknown) {
-            console.error(err);
             const errorMessage = err instanceof Error ? err.message : "Error al registrarse. Intenta nuevamente.";
             setError(errorMessage);
         } finally {

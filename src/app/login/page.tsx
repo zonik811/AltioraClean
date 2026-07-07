@@ -49,15 +49,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            console.log("=== INICIANDO LOGIN CON safeLogin ===");
-            
-            // Usar safeLogin que limpia todas las sesiones antes
             await safeLogin(email, password);
-            console.log("✓ Login exitoso, verificando auth...");
-            
-            // Verificar autenticación después del login
             await checkAuth();
-            console.log("✓ Auth verificada");
             
         } catch (err: unknown) {
             console.error("✗ Error en login:", err);

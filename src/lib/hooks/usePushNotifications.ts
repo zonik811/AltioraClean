@@ -73,7 +73,6 @@ export function usePushNotifications() {
             };
 
             await subscribeUser(subData, user?.$id);
-            console.log("Subscribed successfully");
         } catch (error) {
             console.error("Failed to subscribe:", error);
             setPermission(Notification.permission);

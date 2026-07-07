@@ -22,6 +22,7 @@ import { obtenerURLArchivo } from "@/lib/appwrite";
 import { nombreCompleto } from "@/lib/utils";
 import type { Empleado } from "@/types";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function PersonalPage() {
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -50,6 +51,7 @@ export default function PersonalPage() {
             setHasMore(data.hasMore);
         } catch (error) {
             console.error("Error cargando empleados:", error);
+            toast.error("Error al cargar los empleados");
         } finally {
             setLoading(false);
         }
@@ -65,6 +67,7 @@ export default function PersonalPage() {
             setHasMore(data.hasMore);
         } catch (error) {
             console.error("Error cargando más empleados:", error);
+            toast.error("Error al cargar más empleados");
         } finally {
             setLoadingMore(false);
         }

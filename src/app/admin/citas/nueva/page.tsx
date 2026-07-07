@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { crearCita } from "@/lib/actions/citas";
 import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
 import { obtenerClientes } from "@/lib/actions/clientes";
@@ -81,9 +82,10 @@ export default function NuevaCitaPage() {
                 obtenerClientes(),
             ]);
             setEmpleados(empleadosData);
-            setClientes(clientesData);
+            setClientes(clientesData.documents);
         } catch (error) {
             console.error("Error cargando datos:", error);
+            toast.error("Error al cargar los datos");
         }
     };
 

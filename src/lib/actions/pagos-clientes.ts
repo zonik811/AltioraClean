@@ -34,6 +34,24 @@ export interface PagoCliente {
 }
 
 /**
+ * Obtiene un pago de cliente por ID
+ */
+export async function obtenerPagoClientePorId(id: string): Promise<PagoCliente | null> {
+    try {
+        await requireAdmin();
+        const pago = await databases.getDocument(
+            getDatabaseId(),
+            COLLECTIONS.PAGOS_CLIENTES,
+            id
+        );
+        return pago as unknown as PagoCliente;
+    } catch (error: unknown) {
+        console.error("Error obteniendo pago de cliente:", error);
+        return null;
+    }
+}
+
+/**
  * Obtiene todos los pagos de clientes
  */
 export async function obtenerPagosClientes(): Promise<PagoCliente[]> {
