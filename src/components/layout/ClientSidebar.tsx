@@ -16,7 +16,7 @@ import styles from "./sidebar.module.css";
 
 const navigation = [
     { name: "Dashboard", href: "/portal/dashboard", icon: LayoutDashboard },
-    { name: "Mis Servicios", href: "/portal/servicios", icon: Calendar },
+    { name: "Mis Citas", href: "/portal/servicios", icon: Calendar },
     { name: "Direcciones", href: "/portal/direcciones", icon: MapPin },
     { name: "Mi Perfil", href: "/portal/perfil", icon: UserCircle },
 ];

@@ -353,10 +353,11 @@ export async function actualizarCita(
                 const precioServicio = currentCita.precioCliente || currentCita.precioAcordado || 0;
 
                 if (currentCita.clienteId) {
+                    const puntosGanados = Math.max(1, Math.floor(precioServicio / 50000));
                     await registrarPuntos({
                         clienteId: currentCita.clienteId,
-                        puntos: 1,
-                        motivo: `Servicio Completado: ${descripcionServicio}`,
+                        puntos: puntosGanados,
+                        motivo: `Servicio Completado: ${descripcionServicio} ($${precioServicio.toLocaleString("es-CO")})`,
                         referenciaId: id,
                         precioServicio: precioServicio
                     });

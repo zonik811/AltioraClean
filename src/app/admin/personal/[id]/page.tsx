@@ -44,7 +44,8 @@ import { obtenerCitas, actualizarCita } from "@/lib/actions/citas";
 import { obtenerPagosEmpleado, registrarPago, type Pago } from "@/lib/actions/pagos";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import { nombreCompleto, formatearPrecio, formatearFecha } from "@/lib/utils";
-import { type Empleado, type EstadisticasEmpleado, type Cita, type ModalidadPago, EstadoCita, CargoEmpleado } from "@/types";
+import { type Empleado, type EstadisticasEmpleado, type Cita, ModalidadPago, EstadoCita, CargoEmpleado } from "@/types";
+import { calcularPagoEmpleado } from "@/lib/utils/precio-calculator";
 
 export default function PerfilEmpleadoPage() {
     const params = useParams();
@@ -458,7 +459,18 @@ export default function PerfilEmpleadoPage() {
                                         ) : (
                                             servicios.map((cita) => {
                                                 const horas = editingHoras[cita.$id] || 8;
-                                                const total = horas * empleado.tarifaPorHora;
+                                                let total = 0;
+                                                if (empleado.modalidadPago === ModalidadPago.HORA) {
+                                                    total = horas * empleado.tarifaPorHora;
+                                                } else {
+                                                    total = calcularPagoEmpleado({
+                                                        tarifaPorHora: empleado.tarifaPorHora,
+                                                        modalidadPago: empleado.modalidadPago as ModalidadPago,
+                                                        duracionServicio: cita.duracionEstimada || 90,
+                                                        precioServicio: cita.precioCliente || cita.precioAcordado || 0,
+                                                        porcentajeServicio: 0
+                                                    });
+                                                }
                                                 return (
                                                     <TableRow key={cita.$id} className="hover:bg-gray-50/50">
                                                         <TableCell className="pl-6 font-medium bg-transparent">
@@ -466,28 +478,34 @@ export default function PerfilEmpleadoPage() {
                                                         </TableCell>
                                                         <TableCell className="text-gray-600">{cita.clienteNombre}</TableCell>
                                                         <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    value={horas}
-                                                                    onChange={(e) => setEditingHoras({
-                                                                        ...editingHoras,
-                                                                        [cita.$id]: parseInt(e.target.value) || 0
-                                                                    })}
-                                                                    className="w-14 h-7 text-center px-1 text-sm bg-white"
-                                                                    min={0}
-                                                                    max={24}
-                                                                />
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="h-7 w-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                                    disabled={horas === (cita.horasTrabajadas || 8)}
-                                                                    onClick={() => handleUpdateHoras(cita.$id)}
-                                                                >
-                                                                    <Save className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            </div>
+                                                            {empleado.modalidadPago === ModalidadPago.HORA ? (
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={horas}
+                                                                        onChange={(e) => setEditingHoras({
+                                                                            ...editingHoras,
+                                                                            [cita.$id]: parseInt(e.target.value) || 0
+                                                                        })}
+                                                                        className="w-14 h-7 text-center px-1 text-sm bg-white"
+                                                                        min={0}
+                                                                        max={24}
+                                                                    />
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="h-7 w-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                                        disabled={horas === (cita.horasTrabajadas || 8)}
+                                                                        onClick={() => handleUpdateHoras(cita.$id)}
+                                                                    >
+                                                                        <Save className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400 font-medium capitalize">
+                                                                    {empleado.modalidadPago.replace("_", " ")}
+                                                                </span>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className="text-right pr-6 font-semibold text-gray-900">
                                                             {formatearPrecio(total)}

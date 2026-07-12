@@ -134,10 +134,10 @@ export default function MisServiciosPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                        Mis Servicios
+                        Mis Citas
                     </h1>
                     <p className="text-gray-500 mt-1">
-                        Historial completo de tus servicios agendados
+                        Historial completo de tus citas agendadas
                     </p>
                 </div>
                 <Link href="/agendar">
@@ -150,7 +150,7 @@ export default function MisServiciosPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
                     <CardContent className="pt-6">
-                        <p className="text-sm text-gray-500">Total Servicios</p>
+                        <p className="text-sm text-gray-500">Total Citas</p>
                         <p className="text-3xl font-bold text-gray-900">
                             {totales.total}
                         </p>
@@ -310,17 +310,17 @@ export default function MisServiciosPage() {
                     title={
                         busqueda || filtroEstado !== "todas"
                             ? "Sin resultados"
-                            : "Sin servicios aún"
+                            : "No tienes citas agendadas"
                     }
                     description={
                         busqueda || filtroEstado !== "todas"
-                            ? "No se encontraron servicios con los filtros seleccionados"
-                            : "Agenda tu primer servicio para comenzar"
+                            ? "No se encontraron citas con los filtros seleccionados"
+                            : "Programa tu primera cita para comenzar"
                     }
                     action={
                         !busqueda && filtroEstado === "todas"
                             ? {
-                                  label: "Agendar Servicio",
+                                  label: "Agendar Cita",
                                   href: "/agendar",
                               }
                             : undefined

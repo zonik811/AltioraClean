@@ -21,7 +21,7 @@ import {
     Clock,
     FileText,
     CheckCircle2,
-    Sparkles,
+    Sparkles, Award,
     Building2,
     Zap,
     CreditCard,
@@ -32,6 +32,7 @@ import Link from "next/link";
 import { crearCita } from "@/lib/actions/citas";
 import { obtenerDireccionesCliente } from "@/lib/actions/direcciones";
 import { obtenerServiciosPublicos } from "@/lib/actions/servicios";
+import { redimirPuntos } from "@/lib/actions/puntos";
 import { TipoPropiedad, MetodoPago, Direccion } from "@/types";
 import type { Servicio, CategoriaServicio } from "@/types";
 import { calcularDuracionEstimada } from "@/lib/utils/precio-calculator";
@@ -59,8 +60,15 @@ const METODOS_PAGO = [
     { value: MetodoPago.BANCOLOMBIA, label: "Bancolombia", icon: CreditCard },
 ];
 
+const REDEEM_OPTIONS = [
+    { id: "desc_10", label: "Redimir 5 puntos por 10% de descuento", cost: 5, discountPercent: 0.1 },
+    { id: "desc_20", label: "Redimir 8 puntos por 20% de descuento", cost: 8, discountPercent: 0.2 },
+    { id: "limpieza_gratis", label: "Redimir 15 puntos por Limpieza Gratis", cost: 15, discountPercent: 1.0 }
+] as const;
+
 export default function AgendarPage() {
     const router = useRouter();
+    const [redeemPointsOption, setRedeemPointsOption] = useState<"none" | "desc_10" | "desc_20" | "limpieza_gratis">("none");
     const { user, profile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingServicios, setLoadingServicios] = useState(true);
@@ -177,7 +185,13 @@ export default function AgendarPage() {
         [servicios, formData.servicioId]
     );
 
-    const precioEstimado = useMemo(() => {
+    const isGoldClient = useMemo(() => {
+        if (!profile) return false;
+        const nivel = (profile as any).nivelFidelidad;
+        return nivel && (nivel.toLowerCase() === "oro" || nivel.toLowerCase() === "gold");
+    }, [profile]);
+
+    const precioEstimadoOriginal = useMemo(() => {
         if (!selectedServicio) return 0;
 
         let precio = selectedServicio.precioBase;
@@ -206,6 +220,26 @@ export default function AgendarPage() {
 
         return Math.round(precio / 1000) * 1000;
     }, [selectedServicio, formData.tipoPropiedad, formData.metrosCuadrados, formData.habitaciones, formData.banos]);
+
+    const currentPoints = useMemo(() => {
+        return (profile as any)?.puntosAcumulados || 0;
+    }, [profile]);
+
+    const precioEstimado = useMemo(() => {
+        let finalPrecio = precioEstimadoOriginal;
+        if (isGoldClient) {
+            finalPrecio = finalPrecio * 0.95;
+        }
+
+        if (redeemPointsOption !== "none") {
+            const option = REDEEM_OPTIONS.find((o) => o.id === redeemPointsOption);
+            if (option && currentPoints >= option.cost) {
+                finalPrecio = finalPrecio * (1 - option.discountPercent);
+            }
+        }
+
+        return Math.round(finalPrecio / 1000) * 1000;
+    }, [precioEstimadoOriginal, isGoldClient, redeemPointsOption, currentPoints]);
 
     const duracionEstimada = useMemo(() => {
         if (!selectedServicio) return 90;
@@ -315,6 +349,21 @@ export default function AgendarPage() {
             });
 
             if (response.success) {
+                // Deduct points if user chose to redeem!
+                if (profile?.$id && redeemPointsOption !== "none") {
+                    const option = REDEEM_OPTIONS.find((o) => o.id === redeemPointsOption);
+                    if (option) {
+                        try {
+                            await redimirPuntos(
+                                profile.$id,
+                                option.cost,
+                                `Canje en Reserva: ${option.label}`
+                            );
+                        } catch (rError) {
+                            console.error("Error al redimir puntos durante reserva:", rError);
+                        }
+                    }
+                }
                 setSuccess(true);
                 setTimeout(() => {
                     router.push("/portal/dashboard?refresh=" + Date.now());
@@ -831,34 +880,106 @@ export default function AgendarPage() {
                                             />
                                         </div>
                                     </CardContent>
-                                </Card>
+                                          {/* Redención de Puntos */}
+                                 {profile && currentPoints >= 5 && (
+                                     <Card className="border-2 border-sky-100 bg-sky-50/30 backdrop-blur-xl shadow-md p-4 space-y-3">
+                                         <div className="flex items-center space-x-2 text-sky-700">
+                                             <Award className="h-5 w-5 text-sky-600 animate-pulse" />
+                                             <span className="font-bold text-sm">¿Deseas redimir tus puntos de fidelidad?</span>
+                                         </div>
+                                         <p className="text-xs text-sky-600 leading-tight">
+                                             Tienes <span className="font-bold">{currentPoints} Pts</span>. Selecciona un premio para aplicarlo a esta cita:
+                                         </p>
+                                         <div className="grid grid-cols-1 gap-2 pt-1">
+                                             <label className={`flex items-center justify-between p-2.5 rounded-lg border text-sm cursor-pointer transition-colors ${redeemPointsOption === "none" ? "bg-white border-sky-200" : "bg-white/50 border-gray-100 hover:border-sky-100"}`}>
+                                                 <div className="flex items-center space-x-2">
+                                                     <input
+                                                         type="radio"
+                                                         name="redeemPoints"
+                                                         checked={redeemPointsOption === "none"}
+                                                         onChange={() => setRedeemPointsOption("none")}
+                                                         className="text-sky-600 focus:ring-sky-500"
+                                                     />
+                                                     <span className="font-medium text-gray-700">No redimir puntos</span>
+                                                 </div>
+                                             </label>
+                                             {REDEEM_OPTIONS.map((opt) => {
+                                                 const disabled = currentPoints < opt.cost;
+                                                 return (
+                                                     <label key={opt.id} className={`flex items-center justify-between p-2.5 rounded-lg border text-sm cursor-pointer transition-colors ${disabled ? "opacity-50 cursor-not-allowed bg-gray-50 border-gray-100" : redeemPointsOption === opt.id ? "bg-sky-50 border-sky-300 font-medium" : "bg-white border-gray-200 hover:border-sky-100"}`}>
+                                                         <div className="flex items-center space-x-2">
+                                                             <input
+                                                                 type="radio"
+                                                                 name="redeemPoints"
+                                                                 disabled={disabled}
+                                                                 checked={redeemPointsOption === opt.id}
+                                                                 onChange={() => setRedeemPointsOption(opt.id as any)}
+                                                                 className="text-sky-600 focus:ring-sky-500 disabled:opacity-50"
+                                                             />
+                                                             <span className={disabled ? "text-gray-400" : "text-gray-800"}>
+                                                                 {opt.label}
+                                                             </span>
+                                                         </div>
+                                                         <span className={`text-xs shrink-0 px-2 py-0.5 rounded-full font-bold ${disabled ? "bg-gray-100 text-gray-400" : "bg-sky-100 text-sky-700"}`}>
+                                                             Costo: {opt.cost} Pts
+                                                         </span>
+                                                     </label>
+                                                 );
+                                             })}
+                                         </div>
+                                     </Card>
+                                 )}
 
-                                {/* Precio estimado */}
-                                {selectedServicio && (
-                                    <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/80 to-primary/10 shadow-xl">
-                                        <CardContent className="pt-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
-                                                        <Sparkles className="h-6 w-6 text-white" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-gray-600">Precio Estimado</p>
-                                                        <p className="text-3xl font-bold text-gray-900">
-                                                            ${precioEstimado.toLocaleString("es-CO")}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            {selectedServicio.nombre} • ~{duracionEstimada} min
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-3 py-1.5 text-xs">
-                                                    Confirmado al aceptar
-                                                </Badge>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
+                                 {/* Precio estimado */}
+                                 {selectedServicio && (
+                                     <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/80 to-primary/10 shadow-xl">
+                                         <CardContent className="pt-6">
+                                             <div className="flex items-center justify-between">
+                                                 <div className="flex items-center space-x-3">
+                                                     <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
+                                                         <Sparkles className="h-6 w-6 text-white" />
+                                                     </div>
+                                                     <div>
+                                                         <p className="text-sm text-gray-600">Precio Estimado</p>
+                                                         <div className="flex items-baseline space-x-2">
+                                                             {precioEstimado !== precioEstimadoOriginal ? (
+                                                                 <>
+                                                                     <span className="text-3xl font-bold text-gray-900">
+                                                                         ${precioEstimado.toLocaleString("es-CO")}
+                                                                     </span>
+                                                                     <span className="text-sm text-gray-400 line-through">
+                                                                         ${precioEstimadoOriginal.toLocaleString("es-CO")}
+                                                                     </span>
+                                                                 </>
+                                                             ) : (
+                                                                 <span className="text-3xl font-bold text-gray-900">
+                                                                     ${precioEstimado.toLocaleString("es-CO")}
+                                                                 </span>
+                                                             )}
+                                                         </div>
+                                                         <p className="text-xs text-gray-500 mt-1">
+                                                             {selectedServicio.nombre} • ~{duracionEstimada} min
+                                                             {isGoldClient && (
+                                                                 <span className="block text-green-600 font-semibold mt-0.5">
+                                                                     ¡Descuento ORO del 5% aplicado!
+                                                                 </span>
+                                                             )}
+                                                             {redeemPointsOption !== "none" && (
+                                                                 <span className="block text-sky-600 font-semibold mt-0.5">
+                                                                     ¡Canje de Puntos aplicado!
+                                                                 </span>
+                                                             )}
+                                                         </p>
+                                                     </div>
+                                                 </div>
+                                                 <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-3 py-1.5 text-xs">
+                                                     Confirmado al aceptar
+                                                 </Badge>
+                                             </div>
+                                         </CardContent>
+                                     </Card>
+                                 )}
+                                </Card>
                             </div>
                         )}
 
@@ -884,9 +1005,22 @@ export default function AgendarPage() {
                                                 <p className="font-semibold text-gray-900">{selectedServicio?.nombre}</p>
                                             </div>
                                             <div className="p-3 bg-gray-50 rounded-lg">
-                                                <p className="text-xs text-gray-500 uppercase tracking-wide">Precio Estimado</p>
-                                                <p className="font-bold text-primary text-lg">${precioEstimado.toLocaleString("es-CO")}</p>
-                                            </div>
+                                                 <p className="text-xs text-gray-500 uppercase tracking-wide">Precio Estimado</p>
+                                                 {precioEstimado !== precioEstimadoOriginal ? (
+                                                     <div className="flex flex-col">
+                                                         <span className="font-bold text-primary text-lg">
+                                                             ${precioEstimado.toLocaleString("es-CO")}
+                                                         </span>
+                                                         <span className="text-xs text-gray-500 leading-normal">
+                                                             Original: ${precioEstimadoOriginal.toLocaleString("es-CO")}
+                                                             {isGoldClient && " (5% Descuento ORO)"}
+                                                             {redeemPointsOption !== "none" && " (Canje de Puntos)"}
+                                                         </span>
+                                                     </div>
+                                                 ) : (
+                                                     <p className="font-bold text-primary text-lg">${precioEstimado.toLocaleString("es-CO")}</p>
+                                                 )}
+                                             </div>
                                             <div className="p-3 bg-gray-50 rounded-lg">
                                                 <p className="text-xs text-gray-500 uppercase tracking-wide">Cliente</p>
                                                 <p className="font-semibold text-gray-900">{formData.clienteNombre}</p>

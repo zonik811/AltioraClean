@@ -188,6 +188,8 @@ export async function crearCliente(
             notasImportantes: data.notasImportantes,
             activo: true,
             createdAt: new Date().toISOString(),
+            puntosAcumulados: 2,
+            nivelFidelidad: "bronce",
         };
 
         const newCliente = await databases.createDocument(
@@ -196,6 +198,23 @@ export async function crearCliente(
             ID.unique(),
             clienteData
         );
+
+        // Crear historial de puntos para el bono de bienvenida
+        try {
+            await databases.createDocument(
+                getDatabaseId(),
+                COLLECTIONS.HISTORIAL_PUNTOS,
+                ID.unique(),
+                {
+                    clienteId: newCliente.$id,
+                    puntos: 2,
+                    motivo: "Bono de bienvenida por registro",
+                    fecha: new Date().toISOString()
+                }
+            );
+        } catch (hError) {
+            console.error("Error creando historial de puntos de bienvenida:", hError);
+        }
 
         return {
             success: true,

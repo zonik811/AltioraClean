@@ -24,7 +24,7 @@ import Link from "next/link";
 import { NivelFidelidad, Cita, HistorialPuntos, Cliente } from "@/types";
 import { obtenerMisCitas } from "@/lib/actions/citas";
 import { obtenerClientePorEmail } from "@/lib/actions/clientes";
-import { obtenerHistorialPuntos } from "@/lib/actions/puntos";
+import { obtenerHistorialPuntos, redimirPuntos } from "@/lib/actions/puntos";
 import { obtenerDireccionesCliente, eliminarDireccion } from "@/lib/actions/direcciones";
 import type { Direccion } from "@/types";
 import { useState, useEffect } from "react";
@@ -111,6 +111,8 @@ export default function ClientDashboard() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
     const [deletingAddress, setDeletingAddress] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [redeemingRewardId, setRedeemingRewardId] = useState<string | null>(null);
 
     // Filters
     const [serviceFilter, setServiceFilter] = useState("all");
@@ -146,7 +148,25 @@ export default function ClientDashboard() {
             }
         }
         fetchDashboardData();
-    }, [user]);
+    }, [user, refreshTrigger]);
+
+    const handleRedeemReward = async (rewardId: string, cost: number, name: string) => {
+        if (!profileData) return;
+        setRedeemingRewardId(rewardId);
+        try {
+            const res = await redimirPuntos(profileData.$id, cost, name);
+            if (res.success) {
+                toast.success(`¡Premio "${name}" canjeado con éxito!`);
+                setRefreshTrigger(prev => prev + 1);
+            } else {
+                toast.error(res.error || "No se pudo canjear el premio");
+            }
+        } catch {
+            toast.error("Ocurrió un error al canjear el premio");
+        } finally {
+            setRedeemingRewardId(null);
+        }
+    };
 
     // Derived State
     const proximaCita = citas.find(c => ["pendiente", "confirmada", "en-progreso"].includes(c.estado));
@@ -161,7 +181,7 @@ export default function ClientDashboard() {
         return matchesStatus && matchesSearch;
     });
 
-    const nivel = profileData?.nivelFidelidad || NivelFidelidad.BRONCE;
+    const nivel = ((profileData?.nivelFidelidad || NivelFidelidad.BRONCE).toLowerCase()) as NivelFidelidad;
     const puntos = profileData?.puntosAcumulados || 0;
     const nombre = profileData?.nombre || user?.name || "Cliente";
 
@@ -509,8 +529,7 @@ export default function ClientDashboard() {
                     )}
                 </TabsContent>
 
-                {/* Tab: Points */}
-                <TabsContent value="points" className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="points" className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
                     {/* Benefits Explanation Card */}
                     <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-none">
                         <CardHeader>
@@ -585,6 +604,120 @@ export default function ClientDashboard() {
                         </CardContent>
                     </Card>
 
+                    {/* Premios Disponibles */}
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-900">Premios y Canje</h3>
+                        <p className="text-sm text-gray-500">Canjea tus puntos acumulados por descuentos o servicios gratuitos.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[
+                                { id: "desc_10", name: "Cupón 10% Descuento", cost: 5, description: "Obtén un cupón de 10% de descuento aplicable en tu próxima cita de limpieza." },
+                                { id: "desc_20", name: "Cupón 20% Descuento", cost: 8, description: "Ahorra más en tu próxima reserva de limpieza con un cupón del 20%." },
+                                { id: "limpieza_gratis", name: "Limpieza Residencial Gratis", cost: 15, description: "Canjea este premio por un servicio de limpieza residencial básica 100% gratuito." }
+                            ].map((premio) => {
+                                const canRedeem = puntos >= premio.cost;
+                                return (
+                                    <Card key={premio.id} className="border border-slate-100 hover:shadow-md transition-shadow flex flex-col justify-between">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <CardTitle className="text-base font-bold text-gray-900">{premio.name}</CardTitle>
+                                                <Badge className="bg-sky-100 text-sky-700 border-sky-200 shrink-0">
+                                                    {premio.cost} Pts
+                                                </Badge>
+                                            </div>
+                                            <CardDescription className="text-xs mt-1">{premio.description}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="pt-2 mt-auto">
+                                            <Button
+                                                size="sm"
+                                                className="w-full bg-primary hover:bg-primary/90 text-white"
+                                                disabled={!canRedeem || redeemingRewardId === premio.id}
+                                                onClick={() => handleRedeemReward(premio.id, premio.cost, premio.name)}
+                                            >
+                                                {redeemingRewardId === premio.id ? "Procesando..." : canRedeem ? "Canjear Premio" : "Puntos Insuficientes"}
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Logros y Desafíos */}
+                    <Card className="border border-slate-100 shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                                Logros y Desafíos
+                            </CardTitle>
+                            <CardDescription>Gamifica tu experiencia desbloqueando insignias por tus servicios.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {[
+                                    {
+                                        id: "pionero",
+                                        name: "Pionero Clean",
+                                        description: "Registrarte en la plataforma y recibir tus puntos de bienvenida.",
+                                        unlocked: true,
+                                        date: profileData ? new Date(profileData.createdAt).toLocaleDateString("es-CO") : "Hoy"
+                                    },
+                                    {
+                                        id: "primer_brillo",
+                                        name: "Primer Brillo",
+                                        description: "Completar tu primer servicio de limpieza a domicilio.",
+                                        unlocked: citasCompletadas.length >= 1,
+                                        date: citasCompletadas.length >= 1 ? new Date(citasCompletadas[0].completedAt || citasCompletadas[0].updatedAt).toLocaleDateString("es-CO") : null
+                                    },
+                                    {
+                                        id: "recurrente",
+                                        name: "Cliente Recurrente",
+                                        description: "Completar 5 servicios de limpieza con nosotros.",
+                                        unlocked: citasCompletadas.length >= 5,
+                                        date: citasCompletadas.length >= 5 ? "Completado" : `${citasCompletadas.length}/5 servicios`
+                                    },
+                                    {
+                                        id: "socio_oro",
+                                        name: "Socio de Oro",
+                                        description: "Alcanzar la membresía ORO acumulando 20 o más puntos.",
+                                        unlocked: nivel === NivelFidelidad.ORO,
+                                        date: nivel === NivelFidelidad.ORO ? "Desbloqueado" : `${puntos}/20 Pts`
+                                    }
+                                ].map((logro) => (
+                                    <div
+                                        key={logro.id}
+                                        className={`p-4 rounded-xl border flex flex-col justify-between items-center text-center transition-all ${
+                                            logro.unlocked
+                                                ? "bg-gradient-to-b from-sky-50 to-white border-sky-200 shadow-sm"
+                                                : "bg-gray-50/50 border-gray-100 opacity-60"
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 shadow-inner ${
+                                            logro.unlocked ? "bg-sky-100 text-sky-600" : "bg-gray-100 text-gray-400"
+                                        }`}>
+                                            <Award className={`h-6 w-6 ${logro.unlocked ? "text-sky-600 animate-pulse" : "text-gray-400"}`} />
+                                        </div>
+                                        <div>
+                                            <h4 className={`font-bold text-sm ${logro.unlocked ? "text-sky-900" : "text-gray-500"}`}>{logro.name}</h4>
+                                            <p className="text-xs text-gray-400 mt-1 max-w-[150px] mx-auto leading-tight">{logro.description}</p>
+                                        </div>
+                                        <div className="mt-3">
+                                            {logro.unlocked ? (
+                                                <Badge className="bg-sky-100 text-sky-800 border-sky-200 text-[10px] font-semibold py-0.5">
+                                                    🔓 {logro.date}
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-gray-400 border-gray-200 text-[10px] font-normal py-0.5">
+                                                    🔒 {logro.date}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Historial de Puntos */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Historial de Puntos</CardTitle>
@@ -608,9 +741,15 @@ export default function ClientDashboard() {
                                                     <div className="font-medium">{item.motivo}</div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">
-                                                        +{item.puntos} Pts
-                                                    </Badge>
+                                                    {item.puntos > 0 ? (
+                                                        <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">
+                                                            +{item.puntos} Pts
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-red-600 bg-red-50 border-red-200">
+                                                            {item.puntos} Pts
+                                                        </Badge>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

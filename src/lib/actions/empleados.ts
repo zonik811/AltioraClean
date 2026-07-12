@@ -16,6 +16,8 @@ import type {
     PaginatedResponse,
     PaginationParams,
 } from "@/types";
+import { ModalidadPago } from "@/types";
+import { calcularPagoEmpleado } from "@/lib/utils/precio-calculator";
 
 /**
  * Obtiene la lista de empleados con filtros opcionales
@@ -333,10 +335,27 @@ export async function obtenerEstadisticasEmpleado(
             return total + ((pago.monto as number) || 0);
         }, 0);
 
-        // Calcular total ganado histórico usando horasTrabajadas
+        // Calcular total ganado histórico
         const totalGanado = citasCompletadas.documents.reduce((total: number, cita) => {
-            const horas = (cita.horasTrabajadas as number) || 8;
-            return total + (horas * empleado.tarifaPorHora);
+            const duracionMinutos = (cita.duracionEstimada as number) || 90;
+            const precio = (cita.precioCliente as number) || (cita.precioAcordado as number) || 0;
+            
+            // Si la modalidad es por hora, usar horasTrabajadas explícitas o duración estimada
+            if (empleado.modalidadPago === ModalidadPago.HORA) {
+                const horas = (cita.horasTrabajadas as number) || (duracionMinutos / 60);
+                return total + (horas * empleado.tarifaPorHora);
+            }
+            
+            // De lo contrario, usar la función calcularPagoEmpleado
+            const pagoServicio = calcularPagoEmpleado({
+                tarifaPorHora: empleado.tarifaPorHora,
+                modalidadPago: empleado.modalidadPago as ModalidadPago,
+                duracionServicio: duracionMinutos,
+                precioServicio: precio,
+                porcentajeServicio: 0
+            });
+            
+            return total + pagoServicio;
         }, 0);
 
         // Pendiente por pagar = Total Ganado - Total Pagado
