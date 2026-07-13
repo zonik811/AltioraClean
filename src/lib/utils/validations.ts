@@ -116,7 +116,7 @@ export const citaSchema = z.object({
     banos: z.number().min(0).optional(),
     fechaCita: z.string().min(1, "La fecha es requerida"),
     horaCita: z.string().min(1, "La hora es requerida"),
-    duracionEstimada: z.number().min(30, "La duración mínima es 30 minutos"),
+    duracionEstimada: z.number().min(0.5, "La duración mínima es 0.5 horas"),
     empleadosAsignados: z.array(z.string()).optional(),
     precioCliente: z
         .number()
@@ -155,7 +155,7 @@ export const servicioSchema = z.object({
     categoria: z.enum(["residencial", "comercial", "especializado"]),
     precioBase: z.number().min(1000, "El precio base debe ser al menos $1,000"),
     unidadPrecio: z.enum(["hora", "metrocuadrado", "servicio"]),
-    duracionEstimada: z.number().min(15, "La duración mínima es 15 minutos"),
+    duracionEstimada: z.number().min(0.25, "La duración mínima es 0.25 horas"),
     caracteristicas: z.array(z.string()).min(1, "Agrega al menos una característica"),
     requierePersonal: z.number().min(1, "Requiere al menos 1 empleado"),
 });

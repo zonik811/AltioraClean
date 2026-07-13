@@ -557,7 +557,7 @@ export default function ServiciosPage() {
                                                     <span className="flex items-center gap-1">
                                                         <Clock className="h-3.5 w-3.5 text-gray-400" />
                                                         {servicio.duracionEstimada}{" "}
-                                                        min
+                                                        {servicio.duracionEstimada === 1 ? 'hora' : 'horas'}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-gray-600">
@@ -702,8 +702,7 @@ export default function ServiciosPage() {
                                                     <div className="flex items-center gap-3 text-xs text-gray-400">
                                                         <span className="flex items-center gap-1">
                                                             <Clock className="h-3 w-3" />
-                                                            {servicio.duracionEstimada}
-                                                            m
+                                                            {servicio.duracionEstimada} h
                                                         </span>
                                                         <span className="flex items-center gap-1">
                                                             <Users className="h-3 w-3" />
@@ -933,7 +932,7 @@ export default function ServiciosPage() {
                                             setFormData({
                                                 ...formData,
                                                 precioBase:
-                                                    parseInt(
+                                                    parseFloat(
                                                         e.target.value
                                                     ) || 0,
                                             })
@@ -946,7 +945,7 @@ export default function ServiciosPage() {
 
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                                    Duración (min) *
+                                     Duración (horas) *
                                 </label>
                                 <div className="relative">
                                     <Clock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -956,14 +955,14 @@ export default function ServiciosPage() {
                                         onChange={(e) =>
                                             setFormData({
                                                 ...formData,
-                                                duracionEstimada:
-                                                    parseInt(
-                                                        e.target.value
-                                                    ) || 60,
+                                                 duracionEstimada:
+                                                     parseFloat(
+                                                         e.target.value
+                                                     ) || 1,
                                             })
                                         }
                                         className="pl-9 h-10 bg-gray-50/50 focus:bg-white"
-                                        placeholder="60"
+                                        placeholder="1"
                                     />
                                 </div>
                             </div>

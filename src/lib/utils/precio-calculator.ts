@@ -7,7 +7,7 @@ import { ModalidadPago, TipoPropiedad } from "@/types";
 interface CalculoPrecioParams {
     precioBase: number;
     unidadPrecio: "hora" | "metrocuadrado" | "servicio";
-    duracionEstimada?: number; // en minutos
+    duracionEstimada?: number; // en horas
     metrosCuadrados?: number;
     habitaciones?: number;
     banos?: number;
@@ -18,7 +18,7 @@ export function calcularPrecioServicio(params: CalculoPrecioParams): number {
     const {
         precioBase,
         unidadPrecio,
-        duracionEstimada = 60,
+        duracionEstimada = 1,
         metrosCuadrados = 0,
         habitaciones = 0,
         banos = 0,
@@ -30,8 +30,7 @@ export function calcularPrecioServicio(params: CalculoPrecioParams): number {
     switch (unidadPrecio) {
         case "hora":
             // Precio por hora basado en duración estimada
-            const horas = duracionEstimada / 60;
-            precioCalculado = precioBase * horas;
+            precioCalculado = precioBase * duracionEstimada;
             break;
 
         case "metrocuadrado":
@@ -64,7 +63,7 @@ export function calcularPrecioServicio(params: CalculoPrecioParams): number {
 interface CalculoPagoEmpleadoParams {
     tarifaPorHora: number;
     modalidadPago: ModalidadPago;
-    duracionServicio?: number; // en minutos
+    duracionServicio?: number; // en horas
     precioServicio?: number;
     porcentajeServicio?: number; // si se paga por porcentaje del servicio
 }
@@ -73,7 +72,7 @@ export function calcularPagoEmpleado(params: CalculoPagoEmpleadoParams): number 
     const {
         tarifaPorHora,
         modalidadPago,
-        duracionServicio = 60,
+        duracionServicio = 1,
         precioServicio = 0,
         porcentajeServicio = 0,
     } = params;
@@ -82,8 +81,7 @@ export function calcularPagoEmpleado(params: CalculoPagoEmpleadoParams): number 
 
     switch (modalidadPago) {
         case ModalidadPago.HORA:
-            const horas = duracionServicio / 60;
-            montoAPagar = tarifaPorHora * horas;
+            montoAPagar = tarifaPorHora * duracionServicio;
             break;
 
         case ModalidadPago.SERVICIO:
@@ -123,31 +121,31 @@ export function calcularDuracionEstimada(params: CalculoDuracionParams): number 
         tipoServicio = "basico",
     } = params;
 
-    let minutosBase = 60;
+    let horasBase = 1;
 
     // Ajustar por tipo de propiedad
     switch (tipoPropiedad) {
         case TipoPropiedad.APARTAMENTO:
-            minutosBase = 90;
+            horasBase = 1.5;
             break;
         case TipoPropiedad.CASA:
-            minutosBase = 150;
+            horasBase = 2.5;
             break;
         case TipoPropiedad.OFICINA:
-            minutosBase = 120;
+            horasBase = 2;
             break;
         case TipoPropiedad.LOCAL:
-            minutosBase = 180;
+            horasBase = 3;
             break;
     }
 
     // Ajustar por tamaño
     if (metrosCuadrados > 0) {
-        // ~1 minuto por metro cuadrado para limpieza básica
-        minutosBase = metrosCuadrados * 1;
+        // ~1/60 horas (1 minuto) por metro cuadrado para limpieza básica
+        horasBase = (metrosCuadrados * 1) / 60;
     } else if (habitaciones > 0) {
-        // ~30 minutos por habitación
-        minutosBase = habitaciones * 30;
+        // ~0.5 horas (30 minutos) por habitación
+        horasBase = habitaciones * 0.5;
     }
 
     // Ajustar por tipo de servicio
@@ -157,8 +155,8 @@ export function calcularDuracionEstimada(params: CalculoDuracionParams): number 
         especializado: 1.5,
     };
 
-    const minutosTotales = minutosBase * (factoresTipo[tipoServicio] || 1.0);
+    const horasTotales = horasBase * (factoresTipo[tipoServicio] || 1.0);
 
-    // Redondear a múltiplos de 15 minutos
-    return Math.ceil(minutosTotales / 15) * 15;
+    // Redondear a múltiplos de 0.25 horas (15 minutos)
+    return Math.ceil(horasTotales * 4) / 4;
 }

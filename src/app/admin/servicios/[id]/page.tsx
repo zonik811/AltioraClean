@@ -298,7 +298,7 @@ export default function DetalleServicioPage() {
                                     </p>
                                     <p className="flex items-center gap-1 mt-1 font-medium text-gray-700">
                                         <Clock className="h-4 w-4 text-gray-400" />
-                                        {servicio.duracionEstimada} min
+                                        {servicio.duracionEstimada} {servicio.duracionEstimada === 1 ? 'hora' : 'horas'}
                                     </p>
                                 </div>
                                 <div className="flex-1">
@@ -523,7 +523,7 @@ export default function DetalleServicioPage() {
                             </div>
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                                    Duración (min)
+                                    Duración (horas)
                                 </label>
                                 <div className="relative">
                                     <Clock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -534,9 +534,9 @@ export default function DetalleServicioPage() {
                                             setEditForm({
                                                 ...editForm,
                                                 duracionEstimada:
-                                                    parseInt(
+                                                    parseFloat(
                                                         e.target.value
-                                                    ) || 60,
+                                                    ) || 1,
                                             })
                                         }
                                         className="pl-9 h-10"

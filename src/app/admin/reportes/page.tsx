@@ -1142,16 +1142,16 @@ export default function ReportesPage() {
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                                                         <div>
                                                             <p className="text-xs text-gray-500">Estimado</p>
-                                                            <p className="font-semibold">{t.duracionEstimada} min</p>
+                                                            <p className="font-semibold">{t.duracionEstimada} h</p>
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-500">Real</p>
-                                                            <p className="font-semibold">{t.duracionReal} min</p>
+                                                            <p className="font-semibold">{t.duracionReal} h</p>
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-500">Diferencia</p>
                                                             <p className={`font-semibold ${t.diferencia > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                                                                {t.diferencia > 0 ? "+" : ""}{t.diferencia} min
+                                                                {t.diferencia > 0 ? "+" : ""}{t.diferencia} h
                                                             </p>
                                                         </div>
                                                         <div>

@@ -3,6 +3,7 @@
 import { EmployeeDetailSkeleton } from "@/components/admin/employee-detail-skeleton";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,10 +37,11 @@ import {
     X,
     Wallet,
     CreditCard,
-    Plus
+    Plus,
+    Trash2
 } from "lucide-react";
 import Link from "next/link";
-import { obtenerEmpleado, obtenerEstadisticasEmpleado, actualizarEmpleado } from "@/lib/actions/empleados";
+import { obtenerEmpleado, obtenerEstadisticasEmpleado, actualizarEmpleado, eliminarEmpleado } from "@/lib/actions/empleados";
 import { obtenerCitas, actualizarCita } from "@/lib/actions/citas";
 import { obtenerPagosEmpleado, registrarPago, type Pago } from "@/lib/actions/pagos";
 import { obtenerURLArchivo } from "@/lib/appwrite";
@@ -87,6 +89,28 @@ export default function PerfilEmpleadoPage() {
         fechaPago: new Date().toISOString().split('T')[0],
         notas: ''
     });
+
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        try {
+            setDeleting(true);
+            const result = await eliminarEmpleado(empleadoId);
+            if (result.success) {
+                toast.success("Empleado eliminado exitosamente");
+                router.push("/admin/personal");
+            } else {
+                toast.error(result.error || "Error al eliminar el empleado");
+            }
+        } catch (err) {
+            console.error("Error al eliminar empleado:", err);
+            toast.error("Error al eliminar el empleado");
+        } finally {
+            setDeleting(false);
+            setShowConfirmDelete(false);
+        }
+    };
 
     useEffect(() => {
         cargarEmpleado();
@@ -229,14 +253,24 @@ export default function PerfilEmpleadoPage() {
                         </div>
                     </div>
                 </div>
-                <Button
-                    onClick={() => setShowEditProfile(true)}
-                    className="shadow-sm border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 w-full md:w-auto"
-                    variant="outline"
-                >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar Perfil
-                </Button>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Button
+                        onClick={() => setShowEditProfile(true)}
+                        className="shadow-sm border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 w-full md:w-auto"
+                        variant="outline"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar Perfil
+                    </Button>
+                    <Button
+                        onClick={() => setShowConfirmDelete(true)}
+                        className="shadow-sm text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 w-full md:w-auto"
+                        variant="outline"
+                    >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar
+                    </Button>
+                </div>
             </div>
 
             {/* Main Info Grid */}
@@ -688,6 +722,27 @@ export default function PerfilEmpleadoPage() {
                 </DialogContent>
             </Dialog>
 
+            {showConfirmDelete && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 className="h-8 w-8 text-red-500" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">¿Eliminar empleado?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Esta acción eliminará permanentemente a <strong>{nombreCompleto(empleado.nombre, empleado.apellido)}</strong> y su cuenta de usuario. Esta acción no se puede deshacer.
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                                <Button variant="outline" onClick={() => setShowConfirmDelete(false)} className="h-10 px-6">Cancelar</Button>
+                                <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="h-10 px-6">
+                                    {deleting ? "Eliminando..." : "Eliminar Empleado"}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

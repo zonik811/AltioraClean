@@ -13,7 +13,8 @@ export const MobileClientSidebar = () => {
     const pathname = usePathname();
 
     useEffect(() => {
-        setOpen(false);
+        const timer = setTimeout(() => setOpen(false), 0);
+        return () => clearTimeout(timer);
     }, [pathname]);
 
     return (

@@ -72,6 +72,7 @@ export default function AgendarPage() {
     const { user, profile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingServicios, setLoadingServicios] = useState(true);
+    const [showBreakdown, setShowBreakdown] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -241,8 +242,71 @@ export default function AgendarPage() {
         return Math.round(finalPrecio / 1000) * 1000;
     }, [precioEstimadoOriginal, isGoldClient, redeemPointsOption, currentPoints]);
 
+    const desglosePrecio = useMemo(() => {
+        if (!selectedServicio) return null;
+
+        const base = selectedServicio.precioBase;
+        
+        let factorPropiedad = 1.0;
+        let porcentajePropiedad = 0;
+        switch (formData.tipoPropiedad) {
+            case TipoPropiedad.APARTAMENTO:
+                factorPropiedad = 0.9;
+                porcentajePropiedad = -10;
+                break;
+            case TipoPropiedad.OFICINA:
+                factorPropiedad = 1.15;
+                porcentajePropiedad = 15;
+                break;
+            case TipoPropiedad.LOCAL:
+                factorPropiedad = 1.3;
+                porcentajePropiedad = 30;
+                break;
+        }
+
+        const precioAjustadoPropiedad = base * factorPropiedad;
+        const ajustePropiedad = precioAjustadoPropiedad - base;
+
+        const recargoMetros = formData.metrosCuadrados > 100 ? (formData.metrosCuadrados - 100) * 500 : 0;
+        const recargoHabitaciones = formData.habitaciones > 3 ? (formData.habitaciones - 3) * 10000 : 0;
+        const recargoBanos = formData.banos > 2 ? (formData.banos - 2) * 8000 : 0;
+
+        const subtotal = precioAjustadoPropiedad + recargoMetros + recargoHabitaciones + recargoBanos;
+
+        let descuentoOroMonto = 0;
+        if (isGoldClient) {
+            descuentoOroMonto = subtotal * 0.05;
+        }
+
+        let descuentoPuntosMonto = 0;
+        let descuentoPuntosPorcentaje = 0;
+        if (redeemPointsOption !== "none") {
+            const option = REDEEM_OPTIONS.find((o) => o.id === redeemPointsOption);
+            if (option && currentPoints >= option.cost) {
+                descuentoPuntosPorcentaje = option.discountPercent * 100;
+                descuentoPuntosMonto = (subtotal - descuentoOroMonto) * option.discountPercent;
+            }
+        }
+
+        const total = subtotal - descuentoOroMonto - descuentoPuntosMonto;
+
+        return {
+            base,
+            porcentajePropiedad,
+            ajustePropiedad: Math.round(ajustePropiedad),
+            recargoMetros,
+            recargoHabitaciones,
+            recargoBanos,
+            subtotal: Math.round(subtotal),
+            descuentoOro: Math.round(descuentoOroMonto),
+            descuentoPuntos: Math.round(descuentoPuntosMonto),
+            descuentoPuntosPorcentaje,
+            total: Math.round(total / 1000) * 1000,
+        };
+    }, [selectedServicio, formData.tipoPropiedad, formData.metrosCuadrados, formData.habitaciones, formData.banos, isGoldClient, redeemPointsOption, currentPoints]);
+
     const duracionEstimada = useMemo(() => {
-        if (!selectedServicio) return 90;
+        if (!selectedServicio) return 1.5;
         return selectedServicio.duracionEstimada || calcularDuracionEstimada({
             tipoPropiedad: formData.tipoPropiedad,
             metrosCuadrados: formData.metrosCuadrados,
@@ -547,7 +611,7 @@ export default function AgendarPage() {
                                                                 <span className="text-lg font-bold text-primary">
                                                                     ${servicio.precioBase.toLocaleString("es-CO")}
                                                                 </span>
-                                                                <span className="text-xs text-gray-400">~{servicio.duracionEstimada} min</span>
+                                                                <span className="text-xs text-gray-400">~{servicio.duracionEstimada} {servicio.duracionEstimada === 1 ? 'hora' : 'horas'}</span>
                                                             </div>
                                                             {isSelected && (
                                                                 <div className="absolute top-2 left-2">
@@ -929,56 +993,122 @@ export default function AgendarPage() {
                                          </div>
                                      </Card>
                                  )}
+                                       {/* Precio estimado */}
+                                  {selectedServicio && desglosePrecio && (
+                                      <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/80 to-primary/10 shadow-xl overflow-hidden">
+                                          <CardContent className="pt-6 pb-4">
+                                              <div className="flex items-center justify-between">
+                                                  <div className="flex items-center space-x-3">
+                                                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
+                                                          <Sparkles className="h-6 w-6 text-white" />
+                                                      </div>
+                                                      <div>
+                                                          <p className="text-sm text-gray-600">Precio Estimado</p>
+                                                          <div className="flex items-baseline space-x-2">
+                                                              {precioEstimado !== precioEstimadoOriginal ? (
+                                                                  <>
+                                                                      <span className="text-3xl font-bold text-gray-900">
+                                                                          ${precioEstimado.toLocaleString("es-CO")}
+                                                                      </span>
+                                                                      <span className="text-sm text-gray-400 line-through">
+                                                                          ${precioEstimadoOriginal.toLocaleString("es-CO")}
+                                                                      </span>
+                                                                  </>
+                                                              ) : (
+                                                                  <span className="text-3xl font-bold text-gray-900">
+                                                                      ${precioEstimado.toLocaleString("es-CO")}
+                                                                  </span>
+                                                              )}
+                                                          </div>
+                                                          <p className="text-xs text-gray-500 mt-1">
+                                                              {selectedServicio.nombre} • ~{duracionEstimada} {duracionEstimada === 1 ? 'hora' : 'horas'}
+                                                          </p>
+                                                      </div>
+                                                  </div>
+                                                  <div className="flex flex-col items-end gap-1.5">
+                                                      <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-3 py-1.5 text-xs">
+                                                          Confirmado al aceptar
+                                                      </Badge>
+                                                      <button
+                                                          type="button"
+                                                          onClick={() => setShowBreakdown(!showBreakdown)}
+                                                          className="text-xs text-secondary hover:text-secondary/80 font-semibold underline focus:outline-none"
+                                                      >
+                                                          {showBreakdown ? "Ocultar desglose" : "Ver desglose"}
+                                                      </button>
+                                                  </div>
+                                              </div>
 
-                                 {/* Precio estimado */}
-                                 {selectedServicio && (
-                                     <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/80 to-primary/10 shadow-xl">
-                                         <CardContent className="pt-6">
-                                             <div className="flex items-center justify-between">
-                                                 <div className="flex items-center space-x-3">
-                                                     <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
-                                                         <Sparkles className="h-6 w-6 text-white" />
-                                                     </div>
-                                                     <div>
-                                                         <p className="text-sm text-gray-600">Precio Estimado</p>
-                                                         <div className="flex items-baseline space-x-2">
-                                                             {precioEstimado !== precioEstimadoOriginal ? (
-                                                                 <>
-                                                                     <span className="text-3xl font-bold text-gray-900">
-                                                                         ${precioEstimado.toLocaleString("es-CO")}
-                                                                     </span>
-                                                                     <span className="text-sm text-gray-400 line-through">
-                                                                         ${precioEstimadoOriginal.toLocaleString("es-CO")}
-                                                                     </span>
-                                                                 </>
-                                                             ) : (
-                                                                 <span className="text-3xl font-bold text-gray-900">
-                                                                     ${precioEstimado.toLocaleString("es-CO")}
-                                                                 </span>
-                                                             )}
-                                                         </div>
-                                                         <p className="text-xs text-gray-500 mt-1">
-                                                             {selectedServicio.nombre} • ~{duracionEstimada} min
-                                                             {isGoldClient && (
-                                                                 <span className="block text-green-600 font-semibold mt-0.5">
-                                                                     ¡Descuento ORO del 5% aplicado!
-                                                                 </span>
-                                                             )}
-                                                             {redeemPointsOption !== "none" && (
-                                                                 <span className="block text-sky-600 font-semibold mt-0.5">
-                                                                     ¡Canje de Puntos aplicado!
-                                                                 </span>
-                                                             )}
-                                                         </p>
-                                                     </div>
-                                                 </div>
-                                                 <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-3 py-1.5 text-xs">
-                                                     Confirmado al aceptar
-                                                 </Badge>
-                                             </div>
-                                         </CardContent>
-                                     </Card>
-                                 )}
+                                              {/* Seccion colapsable del desglose */}
+                                              {showBreakdown && (
+                                                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200 text-xs space-y-2 text-gray-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                      <div className="flex justify-between">
+                                                          <span>Precio Base ({selectedServicio.nombre})</span>
+                                                          <span className="font-medium">${desglosePrecio.base.toLocaleString("es-CO")}</span>
+                                                      </div>
+
+                                                      {desglosePrecio.ajustePropiedad !== 0 && (
+                                                          <div className="flex justify-between">
+                                                              <span className="capitalize">
+                                                                  Ajuste Propiedad ({formData.tipoPropiedad === TipoPropiedad.APARTAMENTO ? "Apartamento -10%" : formData.tipoPropiedad === TipoPropiedad.OFICINA ? "Oficina +15%" : "Local +30%"})
+                                                              </span>
+                                                              <span className={`font-medium ${desglosePrecio.ajustePropiedad < 0 ? "text-green-600" : "text-gray-900"}`}>
+                                                                  {desglosePrecio.ajustePropiedad > 0 ? "+" : ""}${desglosePrecio.ajustePropiedad.toLocaleString("es-CO")}
+                                                              </span>
+                                                          </div>
+                                                      )}
+
+                                                      {desglosePrecio.recargoMetros > 0 && (
+                                                          <div className="flex justify-between">
+                                                              <span>Recargo Área (+{formData.metrosCuadrados - 100} m² adicionales)</span>
+                                                              <span className="font-medium text-gray-900">+${desglosePrecio.recargoMetros.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      {desglosePrecio.recargoHabitaciones > 0 && (
+                                                          <div className="flex justify-between">
+                                                              <span>Recargo Habitaciones (+{formData.habitaciones - 3} adicionales)</span>
+                                                              <span className="font-medium text-gray-900">+${desglosePrecio.recargoHabitaciones.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      {desglosePrecio.recargoBanos > 0 && (
+                                                          <div className="flex justify-between">
+                                                              <span>Recargo Baños (+{formData.banos - 2} adicionales)</span>
+                                                              <span className="font-medium text-gray-900">+${desglosePrecio.recargoBanos.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      {(desglosePrecio.descuentoOro > 0 || desglosePrecio.descuentoPuntos > 0) && (
+                                                          <div className="flex justify-between border-t border-gray-100 pt-1.5 font-medium text-gray-700">
+                                                              <span>Subtotal</span>
+                                                              <span>${desglosePrecio.subtotal.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      {desglosePrecio.descuentoOro > 0 && (
+                                                          <div className="flex justify-between text-green-600 font-medium">
+                                                              <span>Descuento Fidelidad ORO (5%)</span>
+                                                              <span>-${desglosePrecio.descuentoOro.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      {desglosePrecio.descuentoPuntos > 0 && (
+                                                          <div className="flex justify-between text-sky-600 font-medium">
+                                                              <span>Descuento Canje Puntos ({desglosePrecio.descuentoPuntosPorcentaje}%)</span>
+                                                              <span>-${desglosePrecio.descuentoPuntos.toLocaleString("es-CO")}</span>
+                                                          </div>
+                                                      )}
+
+                                                      <div className="flex justify-between border-t border-gray-200 pt-2 font-bold text-gray-900 text-sm">
+                                                          <span>Total Estimado</span>
+                                                          <span className="text-primary">${desglosePrecio.total.toLocaleString("es-CO")}</span>
+                                                      </div>
+                                                  </div>
+                                              )}
+                                          </CardContent>
+                                      </Card>
+                                  )}
                                 </Card>
                             </div>
                         )}
@@ -1037,7 +1167,7 @@ export default function AgendarPage() {
                                                 <p className="font-semibold text-gray-900">
                                                     {new Date(formData.fechaCita + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
                                                 </p>
-                                                <p className="text-sm text-gray-500">{formData.horaCita} • ~{duracionEstimada} min</p>
+                                                <p className="text-sm text-gray-500">{formData.horaCita} • ~{duracionEstimada} {duracionEstimada === 1 ? 'hora' : 'horas'}</p>
                                             </div>
                                             <div className="p-3 bg-gray-50 rounded-lg">
                                                 <p className="text-xs text-gray-500 uppercase tracking-wide">Método de Pago</p>

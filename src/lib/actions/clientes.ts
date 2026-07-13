@@ -1,6 +1,6 @@
 "use server";
 
-import { databases } from "@/lib/appwrite-admin";
+import { databases, users } from "@/lib/appwrite-admin";
 import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
 import { requireAdmin } from "@/lib/auth-server";
@@ -288,15 +288,39 @@ export async function recalcularServiciosCliente(clienteId: string): Promise<{ s
     }
 }
 /**
- * Elimina un cliente y sus datos relacionados
+ * Elimina un cliente y sus datos relacionados (incluyendo su usuario de Auth)
  */
 export async function eliminarCliente(id: string): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireAdmin();
+
+        // 1. Obtener el cliente para sacar su correo
+        const cliente = await databases.getDocument(
+            getDatabaseId(),
+            COLLECTIONS.CLIENTES,
+            id
+        );
+        const email = cliente.email;
+
+        // 2. Eliminar el documento de la base de datos
         await databases.deleteDocument(
             getDatabaseId(),
             COLLECTIONS.CLIENTES,
             id
         );
+
+        // 3. Eliminar el usuario de Appwrite Auth si existe
+        if (email) {
+            try {
+                const userList = await users.list([Query.equal("email", email)]);
+                if (userList.users.length > 0) {
+                    await users.delete(userList.users[0].$id);
+                }
+            } catch (authError) {
+                console.error("Error al eliminar usuario de Auth para el cliente:", authError);
+            }
+        }
+
         return { success: true };
     } catch (error: unknown) {
         console.error("Error eliminando cliente:", error);

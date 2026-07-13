@@ -746,7 +746,7 @@ export async function obtenerTiempoServicio(fechaInicio?: Date, fechaFin?: Date)
             const tipo = cita.tipoPropiedad || "Otros";
             const current = tipoMap.get(tipo) || { estimado: 0, real: 0, count: 0 };
             const estimado = cita.duracionEstimada || 0;
-            const real = cita.horasTrabajadas ? cita.horasTrabajadas * 60 : estimado;
+            const real = cita.horasTrabajadas ? cita.horasTrabajadas : estimado;
 
             tipoMap.set(tipo, {
                 estimado: current.estimado + estimado,
@@ -757,15 +757,15 @@ export async function obtenerTiempoServicio(fechaInicio?: Date, fechaFin?: Date)
 
         return Array.from(tipoMap.entries())
             .map(([tipo, data]) => {
-                const promedioEstimado = data.count > 0 ? Math.round(data.estimado / data.count) : 0;
-                const promedioReal = data.count > 0 ? Math.round(data.real / data.count) : 0;
-                const diferencia = promedioReal - promedioEstimado;
+                const promedioEstimado = data.count > 0 ? Math.round((data.estimado / data.count) * 10) / 10 : 0;
+                const promedioReal = data.count > 0 ? Math.round((data.real / data.count) * 10) / 10 : 0;
+                const diferencia = Math.round((promedioReal - promedioEstimado) * 10) / 10;
                 return {
                     tipoPropiedad: tipo.charAt(0).toUpperCase() + tipo.slice(1),
                     duracionEstimada: promedioEstimado,
                     duracionReal: promedioReal,
                     diferencia,
-                    eficiencia: promedioEstimado > 0 ? Math.round((promedioEstimado / Math.max(promedioReal, 1)) * 100) : 100,
+                    eficiencia: promedioEstimado > 0 ? Math.round((promedioEstimado / Math.max(promedioReal, 0.1)) * 100) : 100,
                     totalCitas: data.count,
                 };
             })

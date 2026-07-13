@@ -1,6 +1,6 @@
 "use server";
 
-import { databases } from "@/lib/appwrite-admin";
+import { databases, users } from "@/lib/appwrite-admin";
 import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query, ID } from "node-appwrite";
 import { requireAdmin } from "@/lib/auth-server";
@@ -265,15 +265,38 @@ export async function recalcularServiciosEmpleado(empleadoId: string): Promise<{
 }
 
 /**
- * Elimina un empleado (soft delete - marca como inactivo)
+ * Elimina un empleado y su usuario de autenticación
  */
 export async function eliminarEmpleado(id: string): Promise<DeleteResponse> {
     try {
         await requireAdmin();
-        await databases.updateDocument(getDatabaseId(), COLLECTIONS.EMPLEADOS, id, {
-            activo: false,
-            updatedAt: new Date().toISOString(),
-        });
+
+        // 1. Obtener datos del empleado para sacar el email
+        const empleado = await databases.getDocument(
+            getDatabaseId(),
+            COLLECTIONS.EMPLEADOS,
+            id
+        );
+        const email = empleado.email;
+
+        // 2. Eliminar el documento de la base de datos
+        await databases.deleteDocument(
+            getDatabaseId(),
+            COLLECTIONS.EMPLEADOS,
+            id
+        );
+
+        // 3. Eliminar el usuario de Appwrite Auth si tiene email
+        if (email) {
+            try {
+                const userList = await users.list([Query.equal("email", email)]);
+                if (userList.users.length > 0) {
+                    await users.delete(userList.users[0].$id);
+                }
+            } catch (authError) {
+                console.error("Error al eliminar usuario de Auth para el empleado:", authError);
+            }
+        }
 
         return { success: true };
     } catch (error: unknown) {
@@ -337,12 +360,12 @@ export async function obtenerEstadisticasEmpleado(
 
         // Calcular total ganado histórico
         const totalGanado = citasCompletadas.documents.reduce((total: number, cita) => {
-            const duracionMinutos = (cita.duracionEstimada as number) || 90;
+            const duracionHoras = (cita.duracionEstimada as number) || 1.5;
             const precio = (cita.precioCliente as number) || (cita.precioAcordado as number) || 0;
             
             // Si la modalidad es por hora, usar horasTrabajadas explícitas o duración estimada
             if (empleado.modalidadPago === ModalidadPago.HORA) {
-                const horas = (cita.horasTrabajadas as number) || (duracionMinutos / 60);
+                const horas = (cita.horasTrabajadas as number) || duracionHoras;
                 return total + (horas * empleado.tarifaPorHora);
             }
             
@@ -350,7 +373,7 @@ export async function obtenerEstadisticasEmpleado(
             const pagoServicio = calcularPagoEmpleado({
                 tarifaPorHora: empleado.tarifaPorHora,
                 modalidadPago: empleado.modalidadPago as ModalidadPago,
-                duracionServicio: duracionMinutos,
+                duracionServicio: duracionHoras,
                 precioServicio: precio,
                 porcentajeServicio: 0
             });
