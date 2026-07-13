@@ -4,11 +4,17 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ClientSidebar } from "@/components/layout/ClientSidebar";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import styles from "./mobile-sidebar.module.css";
 
 export const MobileClientSidebar = () => {
     const [open, setOpen] = useState(false);
+    const pathname = usePathname();
+
+    useEffect(() => {
+        setOpen(false);
+    }, [pathname]);
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>

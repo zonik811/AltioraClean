@@ -14,7 +14,11 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
-    checkAuth: () => Promise<void>;
+    checkAuth: () => Promise<{
+        user: Models.User<Models.Preferences> | null;
+        role: "admin" | "client" | null;
+        profile: Cliente | Empleado | null;
+    }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (cliente) {
                 setRole("client");
                 setProfile(cliente);
+                return { user: currentUser, role: "client" as const, profile: cliente };
             } else {
                 // 2. Si no es cliente, verificar si es Empleado/Admin
                 // IMPORTANTE: Esto evita que cualquier usuario registrado sea admin por defecto
@@ -45,16 +50,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setRole("admin");
                     // Por ahora el perfil admin puede ser null o el objeto empleado
                     setProfile(empleado);
+                    return { user: currentUser, role: "admin" as const, profile: empleado };
                 } else {
                     setRole(null);
                     setProfile(null);
+                    return { user: currentUser, role: null, profile: null };
                 }
             }
 
-        } catch (error) {
+        } catch {
             setUser(null);
             setRole(null);
             setProfile(null);
+            return { user: null, role: null, profile: null };
         } finally {
             setLoading(false);
         }

@@ -12,7 +12,7 @@ import { safeLogin } from "@/lib/appwrite";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { checkAuth, role, loading: authLoading } = useAuth();
+    const { checkAuth, role, loading: authLoading, logout } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -50,8 +50,17 @@ export default function LoginPage() {
 
         try {
             await safeLogin(email, password);
-            await checkAuth();
+            const authResult = await checkAuth();
             
+            if (!authResult || !authResult.role) {
+                setError("Tu usuario no tiene un perfil de cliente o empleado registrado en la base de datos. Por favor, contacta al administrador.");
+                setLoading(false);
+                try {
+                    await logout();
+                } catch (logoutErr) {
+                    console.error("Error al cerrar sesión de usuario sin perfil:", logoutErr);
+                }
+            }
         } catch (err: unknown) {
             console.error("✗ Error en login:", err);
             const errorMessage = err instanceof Error ? err.message : "Error al iniciar sesión";
