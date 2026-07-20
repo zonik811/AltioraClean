@@ -12,6 +12,9 @@ import {
     BarChart3,
     LogOut,
     TrendingDown,
+    UserPlus,
+    FileText,
+    Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationToggle } from "@/components/admin/notification-toggle";
@@ -23,6 +26,9 @@ const navigation = [
     { name: "Citas", href: "/admin/citas", icon: Calendar },
     { name: "Personal", href: "/admin/personal", icon: Users },
     { name: "Clientes", href: "/admin/clientes", icon: UserCircle },
+    { name: "Leads", href: "/admin/leads", icon: UserPlus },
+    { name: "Cotizaciones", href: "/admin/cotizaciones", icon: FileText },
+    { name: "Planes", href: "/admin/planes", icon: Repeat },
     { name: "Pagos", href: "/admin/pagos", icon: DollarSign },
     { name: "Gastos", href: "/admin/gastos", icon: TrendingDown },
     { name: "Servicios", href: "/admin/servicios", icon: Sparkles },

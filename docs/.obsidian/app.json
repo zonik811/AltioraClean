@@ -1,0 +1,15 @@
+{
+  "promptDelete": false,
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notas",
+  "attachmentFolderPath": "assets",
+  "readableLineLength": true,
+  "strictLineBreaks": false,
+  "showFrontmatter": false,
+  "showLineNumber": false,
+  "spellcheck": true,
+  "spellcheckLanguages": ["es", "en"],
+  "tabSize": 2,
+  "useTab": false
+}

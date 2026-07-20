@@ -4,7 +4,7 @@ import { databases } from "@/lib/appwrite-admin";
 import { getDatabaseId, COLLECTIONS } from "@/lib/appwrite/config";
 import { Query } from "node-appwrite";
 import { requireAdmin } from "@/lib/auth-server";
-import { Cita, Empleado, Gasto } from "@/types";
+import { Cita, Empleado, Gasto, Plan, Cliente } from "@/types";
 import { obtenerTodosLosEmpleados } from "./empleados";
 
 export interface ReporteFinancieroMes {
@@ -887,6 +887,69 @@ export interface ConcentracionRiesgo {
     porcentajeConcentracion: number;
     nivelRiesgo: "Bajo" | "Medio" | "Alto";
     clientesTop: Array<{ nombre: string; totalGastado: number; porcentaje: number }>;
+}
+
+export interface MetricasPlanes {
+    totalPlanes: number;
+    planesActivos: number;
+    clientesConPlan: number;
+    ingresosRecurrentes: number;
+    ingresosPuntuales: number;
+    porcentajeRecurrente: number;
+    planes: { nombre: string; clientes: number; ingresosMensuales: number }[];
+}
+
+/**
+ * 10b. Métricas de Planes
+ */
+export async function obtenerMetricasPlanes(): Promise<MetricasPlanes> {
+    await requireAdmin();
+    try {
+        const [planesResponse, clientesResponse, citasResponse] = await Promise.all([
+            databases.listDocuments(getDatabaseId(), COLLECTIONS.PLANES, [Query.limit(100)]),
+            databases.listDocuments(getDatabaseId(), COLLECTIONS.CLIENTES, [Query.isNotNull("planId"), Query.limit(100)]),
+            databases.listDocuments(getDatabaseId(), COLLECTIONS.CITAS, [
+                Query.equal("estado", "completada"),
+                Query.equal("pagadoPorCliente", true),
+                Query.limit(5000),
+            ]),
+        ]);
+
+        const planes = planesResponse.documents as unknown as Plan[];
+        const clientesConPlan = clientesResponse.documents as unknown as Cliente[];
+        const citas = citasResponse.documents as unknown as Cita[];
+
+        const totalPlanes = planes.length;
+        const planesActivos = planes.filter((p) => p.activo).length;
+
+        const ingresosRecurrentes = citas
+            .filter((c) => c.origen === "plan_recurrente" || c.planId)
+            .reduce((sum, c) => sum + c.precioAcordado, 0);
+        const ingresosPuntuales = citas
+            .filter((c) => c.origen !== "plan_recurrente" && !c.planId)
+            .reduce((sum, c) => sum + c.precioAcordado, 0);
+        const totalIngresos = ingresosRecurrentes + ingresosPuntuales;
+        const porcentajeRecurrente = totalIngresos > 0 ? Math.round((ingresosRecurrentes / totalIngresos) * 100) : 0;
+
+        const planesDetalle = planes.map((p) => {
+            const clientes = clientesConPlan.filter((c) => c.planId === p.$id);
+            const ingresosMensuales = clientes.length * p.precioPorVisita * p.sesionesPorMes;
+            return { nombre: p.nombre, clientes: clientes.length, ingresosMensuales };
+        });
+
+        return {
+            totalPlanes,
+            planesActivos,
+            clientesConPlan: clientesConPlan.length,
+            ingresosRecurrentes,
+            ingresosPuntuales,
+            porcentajeRecurrente,
+            planes: planesDetalle,
+        };
+    } catch (error) {
+        console.error("Error obteniendo métricas de planes:", error);
+        return { totalPlanes: 0, planesActivos: 0, clientesConPlan: 0, ingresosRecurrentes: 0, ingresosPuntuales: 0, porcentajeRecurrente: 0, planes: [] };
+    }
 }
 
 /**

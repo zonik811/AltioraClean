@@ -163,6 +163,9 @@ export interface Cita {
     createdAt: string;
     updatedAt: string;
     completedAt?: string;
+    planId?: string;
+    origen?: string;
+    frecuencia?: FrecuenciaCliente;
 }
 
 export interface Gasto {
@@ -200,6 +203,10 @@ export interface Cliente {
     puntosAcumulados?: number;
     nivelFidelidad?: string;
     ultimoServicio?: string;
+    // Plan recurrente
+    planId?: string;
+    planInicio?: string;
+    proximaCitaAuto?: string;
 }
 
 // Tipos para formularios y DTOs
@@ -226,7 +233,7 @@ export interface ActualizarEmpleadoInput extends Partial<CrearEmpleadoInput> {
 
 export interface CrearCitaInput {
     servicioId: string;
-    clienteId?: string; // Si es cliente existente
+    clienteId?: string;
     clienteNombre: string;
     clienteTelefono: string;
     clienteEmail: string;
@@ -245,6 +252,8 @@ export interface CrearCitaInput {
     metodoPago: MetodoPago;
     detallesAdicionales?: string;
     notasInternas?: string;
+    planId?: string;
+    frecuencia?: FrecuenciaCliente;
 }
 
 export interface ActualizarCitaInput extends Partial<CrearCitaInput> {
@@ -360,6 +369,171 @@ export interface PaginatedResponse<T> {
     total: number;
     hasMore: boolean;
     nextCursor?: string;
+}
+
+// ============================================================
+// Leads
+// ============================================================
+
+export enum EstadoLead {
+    NUEVO = 'nuevo',
+    CONTACTADO = 'contactado',
+    CALIFICADO = 'calificado',
+    COTIZADO = 'cotizado',
+    CONVERTIDO = 'convertido',
+    PERDIDO = 'perdido',
+}
+
+export enum FuenteLead {
+    WEB = 'web',
+    REFERENCIA = 'referencia',
+    LLAMADA = 'llamada',
+    WHATSAPP = 'whatsapp',
+    REDES = 'redes',
+    OTRO = 'otro',
+}
+
+export interface Lead {
+    $id: string;
+    nombre: string;
+    email: string;
+    telefono: string;
+    direccion?: string;
+    ciudad?: string;
+    tipoPropiedad?: TipoPropiedad;
+    servicioInteresado?: string;
+    descripcion?: string;
+    estado: EstadoLead;
+    fuente: FuenteLead;
+    fechaContacto?: string;
+    notasInternas?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CrearLeadInput {
+    nombre: string;
+    email: string;
+    telefono: string;
+    direccion?: string;
+    ciudad?: string;
+    tipoPropiedad?: TipoPropiedad;
+    servicioInteresado?: string;
+    descripcion?: string;
+    fuente?: FuenteLead;
+}
+
+export interface ActualizarLeadInput extends Partial<CrearLeadInput> {
+    estado?: EstadoLead;
+    fechaContacto?: string;
+    notasInternas?: string;
+}
+
+// ============================================================
+// Cotizaciones
+// ============================================================
+
+export enum EstadoCotizacion {
+    BORRADOR = 'borrador',
+    ENVIADA = 'enviada',
+    APROBADA = 'aprobada',
+    RECHAZADA = 'rechazada',
+    CONVERTIDA = 'convertida',
+}
+
+export interface ItemCotizacion {
+    concepto: string;
+    descripcion?: string;
+    cantidad: number;
+    precioUnitario: number;
+    total: number;
+}
+
+export interface Cotizacion {
+    $id: string;
+    leadId?: string;
+    clienteId?: string;
+    nombre: string;
+    email: string;
+    telefono: string;
+    direccion?: string;
+    ciudad?: string;
+    servicioId?: string;
+    servicioNombre?: string;
+    servicioDescripcion?: string;
+    items: ItemCotizacion[];
+    subtotal: number;
+    descuento: number;
+    total: number;
+    notas?: string;
+    terminos?: string;
+    validezDias: number;
+    estado: EstadoCotizacion;
+    pdfGenerado: boolean;
+    createdAt: string;
+    updatedAt: string;
+    fechaVencimiento?: string;
+}
+
+export interface CrearCotizacionInput {
+    leadId?: string;
+    clienteId?: string;
+    nombre: string;
+    email: string;
+    telefono: string;
+    direccion?: string;
+    ciudad?: string;
+    servicioId?: string;
+    servicioNombre?: string;
+    servicioDescripcion?: string;
+    items: ItemCotizacion[];
+    subtotal: number;
+    descuento?: number;
+    total: number;
+    notas?: string;
+    terminos?: string;
+    validezDias?: number;
+    estado?: EstadoCotizacion;
+}
+
+export interface ActualizarCotizacionInput extends Partial<CrearCotizacionInput> {
+    estado?: EstadoCotizacion;
+    pdfGenerado?: boolean;
+}
+
+// ============================================================
+// Planes
+// ============================================================
+
+export interface Plan {
+    $id: string;
+    nombre: string;
+    descripcion: string;
+    servicioId: string;
+    servicioNombre?: string;
+    frecuencia: FrecuenciaCliente;
+    precioPorVisita: number;
+    precioSugerido: number;
+    sesionesPorMes: number;
+    activo: boolean;
+    destacado: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CrearPlanInput {
+    nombre: string;
+    descripcion: string;
+    servicioId: string;
+    frecuencia: FrecuenciaCliente;
+    precioPorVisita: number;
+    precioSugerido: number;
+    sesionesPorMes: number;
+    destacado?: boolean;
+}
+
+export interface ActualizarPlanInput extends Partial<CrearPlanInput> {
+    activo?: boolean;
 }
 
 export interface PaginationParams {

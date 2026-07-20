@@ -61,6 +61,9 @@ export const COLLECTIONS = {
     HISTORIAL_PUNTOS: 'historial_puntos',
     NOTIFICACIONES: 'notificaciones',
     PUSH_SUBSCRIPTIONS: 'push_subscriptions',
+    LEADS: 'leads',
+    COTIZACIONES: 'cotizaciones',
+    PLANES: 'planes',
 } as const;
 
 // Tipos derivados

@@ -50,6 +50,7 @@ import {
     obtenerEstacionalidad,
     obtenerTicketPromedio,
     obtenerConcentracionRiesgo,
+    obtenerMetricasPlanes,
     type ReporteFinancieroMes,
     type EstadisticaServicio,
     type RendimientoEmpleado,
@@ -67,6 +68,7 @@ import {
     type Estacionalidad,
     type TicketPromedio,
     type ConcentracionRiesgo,
+    type MetricasPlanes,
 } from "@/lib/actions/reportes";
 import { formatearPrecio } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -120,6 +122,7 @@ export default function ReportesPage() {
     const [estacionalidad, setEstacionalidad] = useState<Estacionalidad[]>([]);
     const [ticketPromedio, setTicketPromedio] = useState<TicketPromedio[]>([]);
     const [concentracion, setConcentracion] = useState<ConcentracionRiesgo | null>(null);
+    const [metricasPlanes, setMetricasPlanes] = useState<MetricasPlanes | null>(null);
 
     const currentYear = new Date().getFullYear();
     const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
@@ -200,6 +203,9 @@ export default function ReportesPage() {
             setEstacionalidad(estacionalidadData);
             setTicketPromedio(ticketData);
             setConcentracion(concentracionData);
+
+            const planesData = await obtenerMetricasPlanes();
+            setMetricasPlanes(planesData);
         } catch (error) {
             console.error("Error cargando reportes:", error);
             toast.error("No se pudieron cargar los reportes");
@@ -474,6 +480,9 @@ export default function ReportesPage() {
                             </TabsTrigger>
                             <TabsTrigger value="team" className="rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all whitespace-nowrap">
                                 Equipo
+                            </TabsTrigger>
+                            <TabsTrigger value="planes" className="rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all whitespace-nowrap">
+                                Planes
                             </TabsTrigger>
                         </TabsList>
 
@@ -1505,6 +1514,82 @@ export default function ReportesPage() {
                                     )}
                                 </CardContent>
                             </Card>
+                        </TabsContent>
+
+                        {/* Tab: Planes */}
+                        <TabsContent value="planes" className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                                    <CardContent className="p-6">
+                                        <p className="text-sm text-blue-100">Planes Activos</p>
+                                        <p className="text-3xl font-bold">{metricasPlanes?.planesActivos ?? 0}</p>
+                                        <p className="text-xs text-blue-100">de {metricasPlanes?.totalPlanes ?? 0} totales</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+                                    <CardContent className="p-6">
+                                        <p className="text-sm text-emerald-100">Clientes Suscritos</p>
+                                        <p className="text-3xl font-bold">{metricasPlanes?.clientesConPlan ?? 0}</p>
+                                        <p className="text-xs text-emerald-100">con plan activo</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="border-0 shadow-md bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                                    <CardContent className="p-6">
+                                        <p className="text-sm text-purple-100">Ingresos Recurrentes</p>
+                                        <p className="text-3xl font-bold">{metricasPlanes ? `${metricasPlanes.porcentajeRecurrente}%` : "0%"}</p>
+                                        <p className="text-xs text-purple-100">del total de ingresos</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">Ingresos: Recurrente vs Puntual</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="text-gray-600">Recurrente</span>
+                                                    <span className="font-bold text-emerald-600">{formatearPrecio(metricasPlanes?.ingresosRecurrentes ?? 0)}</span>
+                                                </div>
+                                                <Progress value={metricasPlanes?.porcentajeRecurrente ?? 0} className="h-2.5 bg-gray-100" indicatorClassName="bg-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="text-gray-600">Puntual</span>
+                                                    <span className="font-bold text-blue-600">{formatearPrecio(metricasPlanes?.ingresosPuntuales ?? 0)}</span>
+                                                </div>
+                                                <Progress value={metricasPlanes ? 100 - metricasPlanes.porcentajeRecurrente : 0} className="h-2.5 bg-gray-100" indicatorClassName="bg-blue-500" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">Desglose por Plan</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {metricasPlanes?.planes && metricasPlanes.planes.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {metricasPlanes.planes.map((p) => (
+                                                    <div key={p.nombre} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div>
+                                                            <p className="font-medium text-gray-900 text-sm">{p.nombre}</p>
+                                                            <p className="text-xs text-gray-500">{p.clientes} clientes</p>
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-gray-900">{formatearPrecio(p.ingresosMensuales)}/mes</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 text-center py-8">No hay planes configurados</p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </TabsContent>
 
                         {/* Tab: Servicios */}

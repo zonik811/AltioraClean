@@ -266,7 +266,7 @@ export async function crearCita(
             }
         }
 
-        const citaData = {
+        const citaData: Record<string, unknown> = {
             servicioId: data.servicioId || "limpieza-general",
             clienteId: clienteId || "",
             clienteNombre: data.clienteNombre,
@@ -289,6 +289,9 @@ export async function crearCita(
             pagadoPorCliente: false,
             detallesAdicionales: data.detallesAdicionales,
             notasInternas: data.notasInternas,
+            planId: data.planId,
+            frecuencia: data.frecuencia,
+            origen: data.planId ? 'plan_web' : 'web',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -304,9 +307,15 @@ export async function crearCita(
         if (clienteId) {
             await databases.getDocument(getDatabaseId(), COLLECTIONS.CLIENTES, clienteId)
                 .then(async (cliente) => {
-                    await actualizarCliente(clienteId!, {
+                    const updateData: Record<string, unknown> = {
                         totalServicios: (cliente.totalServicios || 0) + 1,
-                    });
+                    };
+                    // Si se seleccionó un plan, asignarlo al cliente
+                    if (data.planId) {
+                        updateData.planId = data.planId;
+                        updateData.planInicio = new Date().toISOString();
+                    }
+                    await actualizarCliente(clienteId!, updateData);
                 })
                 .catch(() => { });
         }
@@ -422,6 +431,72 @@ export async function actualizarCita(
                 await recalcularServiciosCliente(currentCita.clienteId);
             } catch (recalcError) {
                 console.warn(`Error recalculando cliente:`, recalcError);
+            }
+
+            // 3. Auto-generar siguiente cita si el cliente tiene plan recurrente
+            try {
+                const cliente = await databases.getDocument(
+                    getDatabaseId(),
+                    COLLECTIONS.CLIENTES,
+                    currentCita.clienteId
+                ) as unknown as Cliente;
+
+                if (cliente.planId) {
+                    const plan = await databases.getDocument(
+                        getDatabaseId(),
+                        COLLECTIONS.PLANES,
+                        cliente.planId
+                    );
+
+                    const frecuencia = plan.frecuencia as string;
+                    const fechaActual = new Date(currentCita.fechaCita);
+                    let diasSumar = 30;
+
+                    if (frecuencia === 'semanal') diasSumar = 7;
+                    else if (frecuencia === 'quincenal') diasSumar = 14;
+                    else if (frecuencia === 'mensual') diasSumar = 30;
+
+                    const proximaFecha = new Date(fechaActual);
+                    proximaFecha.setDate(proximaFecha.getDate() + diasSumar);
+
+                    const proximaCitaData: Record<string, unknown> = {
+                        servicioId: currentCita.servicioId,
+                        clienteId: currentCita.clienteId,
+                        clienteNombre: currentCita.clienteNombre,
+                        clienteTelefono: currentCita.clienteTelefono,
+                        clienteEmail: currentCita.clienteEmail,
+                        direccion: currentCita.direccion,
+                        ciudad: currentCita.ciudad,
+                        tipoPropiedad: currentCita.tipoPropiedad,
+                        frecuencia: currentCita.frecuencia || 'semanal',
+                        precioAcordado: plan.precioPorVisita || currentCita.precioAcordado,
+                        estado: 'pendiente',
+                        fechaCita: proximaFecha.toISOString().split('T')[0],
+                        horaCita: currentCita.horaCita,
+                        origen: 'plan_recurrente',
+                        planId: cliente.planId,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                    };
+
+                    await databases.createDocument(
+                        getDatabaseId(),
+                        COLLECTIONS.CITAS,
+                        ID.unique(),
+                        proximaCitaData
+                    );
+
+                    await databases.updateDocument(
+                        getDatabaseId(),
+                        COLLECTIONS.CLIENTES,
+                        currentCita.clienteId,
+                        {
+                            proximaCitaAuto: proximaFecha.toISOString().split('T')[0],
+                        }
+                    );
+                }
+            } catch (autoGenError) {
+                console.error('Error auto-generando cita recurrente:', autoGenError);
             }
         }
 

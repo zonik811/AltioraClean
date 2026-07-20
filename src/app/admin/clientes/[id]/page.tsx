@@ -31,8 +31,13 @@ import {
     actualizarCliente,
     eliminarCliente,
 } from "@/lib/actions/clientes";
+import {
+    obtenerPlanes,
+    asignarPlanACliente,
+    cancelarPlan,
+} from "@/lib/actions/planes";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
-import type { Cliente, TipoCliente, FrecuenciaCliente } from "@/types";
+import type { Cliente, TipoCliente, FrecuenciaCliente, Plan } from "@/types";
 import { toast } from "sonner";
 
 export default function DetalleClientePage() {
@@ -45,6 +50,9 @@ export default function DetalleClientePage() {
     const [showEdit, setShowEdit] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [planes, setPlanes] = useState<Plan[]>([]);
+    const [showPlanDialog, setShowPlanDialog] = useState(false);
+    const [selectedPlanId, setSelectedPlanId] = useState("");
 
     const [editForm, setEditForm] = useState({
         nombre: "",
@@ -59,7 +67,39 @@ export default function DetalleClientePage() {
 
     useEffect(() => {
         cargarCliente();
+        cargarPlanes();
     }, [clienteId]);
+
+    const cargarPlanes = async () => {
+        const data = await obtenerPlanes(true);
+        setPlanes(data.documents);
+    };
+
+    const handleAsignarPlan = async () => {
+        if (!selectedPlanId) return;
+        try {
+            const result = await asignarPlanACliente(clienteId, selectedPlanId);
+            if (result.success) {
+                toast.success("Plan asignado");
+                setShowPlanDialog(false);
+                cargarCliente();
+            }
+        } catch {
+            toast.error("Error al asignar plan");
+        }
+    };
+
+    const handleCancelarPlan = async () => {
+        try {
+            const result = await cancelarPlan(clienteId);
+            if (result.success) {
+                toast.success("Plan cancelado");
+                cargarCliente();
+            }
+        } catch {
+            toast.error("Error al cancelar plan");
+        }
+    };
 
     const cargarCliente = async () => {
         try {
@@ -290,8 +330,76 @@ export default function DetalleClientePage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Plan Recurrente</CardTitle>
+                                {cliente.planId ? (
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-700" onClick={handleCancelarPlan}>
+                                        Cancelar Plan
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                                        setSelectedPlanId("");
+                                        setShowPlanDialog(true);
+                                    }}>
+                                        Asignar Plan
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {cliente.planId ? (
+                                <div className="space-y-3">
+                                    <p className="text-sm text-gray-700">
+                                        Plan activo desde {cliente.planInicio ? formatearFecha(cliente.planInicio) : "desconocido"}
+                                    </p>
+                                    {cliente.proximaCitaAuto && (
+                                        <p className="text-sm text-gray-500">
+                                            Próxima visita: {formatearFecha(cliente.proximaCitaAuto)}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-400">Sin plan recurrente asignado</p>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
+
+            {showPlanDialog && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="font-semibold text-lg text-gray-900">Asignar Plan Recurrente</h3>
+                            <Button variant="ghost" size="icon" onClick={() => setShowPlanDialog(false)} className="rounded-full">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-gray-500">Selecciona un plan para {cliente.nombre}</p>
+                            <select
+                                value={selectedPlanId}
+                                onChange={(e) => setSelectedPlanId(e.target.value)}
+                                className="w-full h-11 px-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value="">Seleccionar plan...</option>
+                                {planes.map((p) => (
+                                    <option key={p.$id} value={p.$id}>
+                                        {p.nombre} — {formatearPrecio(p.precioPorVisita)} / visita ({p.frecuencia})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end">
+                            <Button variant="outline" onClick={() => setShowPlanDialog(false)}>Cancelar</Button>
+                            <Button onClick={handleAsignarPlan} disabled={!selectedPlanId}>Asignar Plan</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showEdit && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">

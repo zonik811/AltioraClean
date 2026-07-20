@@ -32,9 +32,11 @@ import Link from "next/link";
 import { crearCita } from "@/lib/actions/citas";
 import { obtenerDireccionesCliente } from "@/lib/actions/direcciones";
 import { obtenerServiciosPublicos } from "@/lib/actions/servicios";
+import { obtenerPlanesPublicos } from "@/lib/actions/planes";
 import { redimirPuntos } from "@/lib/actions/puntos";
+import { formatearPrecio } from "@/lib/utils";
 import { TipoPropiedad, MetodoPago, Direccion } from "@/types";
-import type { Servicio, CategoriaServicio } from "@/types";
+import type { Servicio, CategoriaServicio, Plan } from "@/types";
 import { calcularDuracionEstimada } from "@/lib/utils/precio-calculator";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useFormValidation } from "@/lib/hooks/use-form-validation";
@@ -79,6 +81,8 @@ export default function AgendarPage() {
     const [completedSteps, setCompletedSteps] = useState<number[]>([]);
     const [showSummary, setShowSummary] = useState(false);
     const [servicios, setServicios] = useState<Servicio[]>([]);
+    const [planes, setPlanes] = useState<Plan[]>([]);
+    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
     const validation = useFormValidation({
         clienteNombre: { required: true, minLength: 3 },
@@ -156,7 +160,12 @@ export default function AgendarPage() {
                 setLoadingServicios(false);
             }
         };
+        const fetchPlanes = async () => {
+            const data = await obtenerPlanesPublicos();
+            setPlanes(data);
+        };
         fetchServicios();
+        fetchPlanes();
     }, []);
 
     const handleAddressChange = (addressId: string) => {
@@ -227,6 +236,8 @@ export default function AgendarPage() {
     }, [profile]);
 
     const precioEstimado = useMemo(() => {
+        if (selectedPlan) return selectedPlan.precioPorVisita;
+
         let finalPrecio = precioEstimadoOriginal;
         if (isGoldClient) {
             finalPrecio = finalPrecio * 0.95;
@@ -240,7 +251,7 @@ export default function AgendarPage() {
         }
 
         return Math.round(finalPrecio / 1000) * 1000;
-    }, [precioEstimadoOriginal, isGoldClient, redeemPointsOption, currentPoints]);
+    }, [precioEstimadoOriginal, isGoldClient, redeemPointsOption, currentPoints, selectedPlan]);
 
     const desglosePrecio = useMemo(() => {
         if (!selectedServicio) return null;
@@ -410,6 +421,8 @@ export default function AgendarPage() {
                 metodoPago: formData.metodoPago,
                 detallesAdicionales: formData.detallesAdicionales || undefined,
                 clienteId: profile?.$id,
+                planId: selectedPlan?.$id,
+                frecuencia: selectedPlan?.frecuencia,
             });
 
             if (response.success) {
@@ -1183,6 +1196,89 @@ export default function AgendarPage() {
                                         )}
                                     </CardContent>
                                 </Card>
+
+                                {/* Plan Recurrente */}
+                                {selectedServicio && (() => {
+                                    const planesDisponibles = planes.filter(
+                                        (p) => p.servicioId === selectedServicio.$id
+                                    );
+                                    if (planesDisponibles.length === 0) return null;
+                                    return (
+                                        <Card className="border-2 border-emerald-200 bg-emerald-50/50 backdrop-blur-xl shadow-xl">
+                                            <CardHeader>
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                                                        <Calendar className="h-6 w-6 text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-xl">¿Hacerlo recurrente?</CardTitle>
+                                                        <p className="text-sm text-gray-600 mt-1">Ahorra con un plan semanal o mensual</p>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer transition-colors hover:border-emerald-300">
+                                                    <input
+                                                        type="radio"
+                                                        name="plan"
+                                                        checked={!selectedPlan}
+                                                        onChange={() => {
+                                                            setSelectedPlan(null);
+                                                            setRedeemPointsOption("none");
+                                                        }}
+                                                        className="text-emerald-600 focus:ring-emerald-500"
+                                                    />
+                                                    <div>
+                                                        <p className="font-medium text-gray-900 text-sm">Solo esta vez</p>
+                                                        <p className="text-xs text-gray-500">Servicio único sin compromiso</p>
+                                                    </div>
+                                                </label>
+                                                {planesDisponibles.map((plan) => {
+                                                    const ahorro = plan.precioSugerido > 0
+                                                        ? Math.round(((plan.precioSugerido - plan.precioPorVisita) / plan.precioSugerido) * 100)
+                                                        : 0;
+                                                    return (
+                                                        <label
+                                                            key={plan.$id}
+                                                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                                                selectedPlan?.$id === plan.$id
+                                                                    ? "border-emerald-400 bg-emerald-50"
+                                                                    : "border-gray-200 bg-white hover:border-emerald-300"
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name="plan"
+                                                                checked={selectedPlan?.$id === plan.$id}
+                                                                onChange={() => {
+                                                                    setSelectedPlan(plan);
+                                                                    setRedeemPointsOption("none");
+                                                                }}
+                                                                className="text-emerald-600 focus:ring-emerald-500"
+                                                            />
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="font-medium text-gray-900 text-sm">{plan.nombre}</p>
+                                                                    <span className="text-sm font-bold text-emerald-600">
+                                                                        {formatearPrecio(plan.precioPorVisita)} / visita
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <span className="text-xs text-gray-500 capitalize">{plan.frecuencia}</span>
+                                                                    {ahorro > 0 && (
+                                                                        <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">
+                                                                            Ahorras {ahorro}%
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })()}
                             </div>
                         )}
 

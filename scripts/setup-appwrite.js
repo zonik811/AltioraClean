@@ -145,6 +145,21 @@ async function setupAppwrite() {
         await databases.createDatetimeAttribute(DATABASE_ID, 'citas', 'createdAt', true);
         await databases.createDatetimeAttribute(DATABASE_ID, 'citas', 'updatedAt', true);
         await databases.createDatetimeAttribute(DATABASE_ID, 'citas', 'completedAt', false);
+        try {
+            await databases.createStringAttribute(DATABASE_ID, 'citas', 'planId', 100, false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   planId ya existe en citas');
+        }
+        try {
+            await databases.createStringAttribute(DATABASE_ID, 'citas', 'origen', 50, false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   origen ya existe en citas');
+        }
+        try {
+            await databases.createEnumAttribute(DATABASE_ID, 'citas', 'frecuencia', ['unica', 'semanal', 'quincenal', 'mensual'], false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   frecuencia ya existe en citas');
+        }
         console.log('✅ Colección "citas" creada\n');
 
         // Crear colección de Clientes
@@ -176,6 +191,16 @@ async function setupAppwrite() {
         await databases.createBooleanAttribute(DATABASE_ID, 'clientes', 'activo', true, true);
         await databases.createDatetimeAttribute(DATABASE_ID, 'clientes', 'createdAt', true);
         await databases.createStringAttribute(DATABASE_ID, 'clientes', 'ultimoServicio', 100, false);
+        try {
+            await databases.createIntegerAttribute(DATABASE_ID, 'clientes', 'puntosAcumulados', false, undefined, undefined, 0);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   puntosAcumulados ya existe en clientes');
+        }
+        try {
+            await databases.createStringAttribute(DATABASE_ID, 'clientes', 'nivelFidelidad', 20, false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   nivelFidelidad ya existe en clientes');
+        }
         console.log('✅ Colección "clientes" creada\n');
 
         // Crear colección de Pagos a Empleados
@@ -215,6 +240,78 @@ async function setupAppwrite() {
         console.log('   ✓ citas');
         console.log('   ✓ clientes');
         console.log('   ✓ pagos_empleados\n');
+        // Crear colección de Planes
+        console.log('📝 Creando colección: planes');
+        try {
+            await databases.createCollection(
+                DATABASE_ID,
+                'planes',
+                'planes',
+                [
+                    Permission.read(Role.any()),
+                    Permission.create(Role.users()),
+                    Permission.update(Role.users()),
+                    Permission.delete(Role.users()),
+                ]
+            );
+            await delay(1000);
+        } catch (e) {
+            if (e.code === 409) {
+                console.log('⚠️  Colección "planes" ya existe, continuando...');
+            } else {
+                throw e;
+            }
+        }
+
+        console.log('   Agregando atributos...');
+        await databases.createStringAttribute(DATABASE_ID, 'planes', 'nombre', 100, true);
+        await delay(500);
+        await databases.createStringAttribute(DATABASE_ID, 'planes', 'descripcion', 1000, true);
+        await delay(500);
+        await databases.createStringAttribute(DATABASE_ID, 'planes', 'servicioId', 100, true);
+        await delay(500);
+        await databases.createEnumAttribute(DATABASE_ID, 'planes', 'frecuencia', ['semanal', 'quincenal', 'mensual'], true);
+        await delay(500);
+        await databases.createIntegerAttribute(DATABASE_ID, 'planes', 'precioPorVisita', true);
+        await delay(500);
+        await databases.createIntegerAttribute(DATABASE_ID, 'planes', 'precioSugerido', true);
+        await delay(500);
+        await databases.createIntegerAttribute(DATABASE_ID, 'planes', 'sesionesPorMes', true);
+        await delay(500);
+        await databases.createBooleanAttribute(DATABASE_ID, 'planes', 'activo', true, true);
+        await delay(500);
+        await databases.createBooleanAttribute(DATABASE_ID, 'planes', 'destacado', true, false);
+        await delay(500);
+        await databases.createDatetimeAttribute(DATABASE_ID, 'planes', 'createdAt', true);
+        await delay(500);
+        await databases.createDatetimeAttribute(DATABASE_ID, 'planes', 'updatedAt', true);
+        console.log('✅ Colección "planes" creada\n');
+
+        // Agregar atributos de plan a clientes si no existen
+        try {
+            await databases.createStringAttribute(DATABASE_ID, 'clientes', 'planId', 100, false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   planId ya existe o error:', e.message);
+        }
+        try {
+            await databases.createDatetimeAttribute(DATABASE_ID, 'clientes', 'planInicio', false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   planInicio ya existe o error:', e.message);
+        }
+        try {
+            await databases.createDatetimeAttribute(DATABASE_ID, 'clientes', 'proximaCitaAuto', false);
+        } catch (e) {
+            if (e.code !== 409) console.warn('   proximaCitaAuto ya existe o error:', e.message);
+        }
+
+        console.log('🎉 ¡Todas las colecciones han sido creadas exitosamente!\n');
+        console.log('📋 Resumen:');
+        console.log('   ✓ servicios');
+        console.log('   ✓ empleados');
+        console.log('   ✓ citas');
+        console.log('   ✓ clientes (actualizado con planId, planInicio, proximaCitaAuto)');
+        console.log('   ✓ pagos_empleados');
+        console.log('   ✓ planes\n');
         console.log('💡 Próximo paso: Crear un usuario admin en Appwrite Auth');
 
     } catch (error) {

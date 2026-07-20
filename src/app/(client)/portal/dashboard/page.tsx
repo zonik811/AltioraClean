@@ -25,6 +25,7 @@ import { NivelFidelidad, Cita, HistorialPuntos, Cliente } from "@/types";
 import { obtenerMisCitas } from "@/lib/actions/citas";
 import { obtenerClientePorEmail } from "@/lib/actions/clientes";
 import { obtenerHistorialPuntos, redimirPuntos } from "@/lib/actions/puntos";
+import { obtenerPlan } from "@/lib/actions/planes";
 import { obtenerDireccionesCliente, eliminarDireccion } from "@/lib/actions/direcciones";
 import type { Direccion } from "@/types";
 import { useState, useEffect } from "react";
@@ -113,6 +114,7 @@ export default function ClientDashboard() {
     const [deletingAddress, setDeletingAddress] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [redeemingRewardId, setRedeemingRewardId] = useState<string | null>(null);
+    const [planInfo, setPlanInfo] = useState<{ nombre: string; frecuencia: string; precioPorVisita: number } | null>(null);
 
     // Filters
     const [serviceFilter, setServiceFilter] = useState("all");
@@ -139,6 +141,18 @@ export default function ClientDashboard() {
                         setPuntosHistory(history);
                         const addresses = await obtenerDireccionesCliente(freshProfile.$id);
                         setSavedAddresses(addresses);
+                        if (freshProfile.planId) {
+                            const plan = await obtenerPlan(freshProfile.planId);
+                            if (plan) {
+                                setPlanInfo({
+                                    nombre: plan.nombre,
+                                    frecuencia: plan.frecuencia,
+                                    precioPorVisita: plan.precioPorVisita,
+                                });
+                            }
+                        } else {
+                            setPlanInfo(null);
+                        }
                     }
                 } catch (error) {
                     toast.error("No se pudieron cargar tus datos");
@@ -367,6 +381,27 @@ export default function ClientDashboard() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Plan Activo */}
+                        {planInfo && (
+                            <Card className="bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Calendar className="w-5 h-5" /> Plan Activo
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <p className="text-2xl font-bold">{planInfo.nombre}</p>
+                                    <p className="text-emerald-100 capitalize">Frecuencia: {planInfo.frecuencia}</p>
+                                    {profileData?.proximaCitaAuto && (
+                                        <p className="text-emerald-100">
+                                            Próxima visita: {new Date(profileData.proximaCitaAuto).toLocaleDateString("es-CO")}
+                                        </p>
+                                    )}
+                                    <p className="text-emerald-100">{formatearPrecio(planInfo.precioPorVisita)} / visita</p>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Quick Stats or Promo */}
                         <Card className="bg-gradient-to-br from-white to-orange-50/50 border-orange-100 shadow-sm">

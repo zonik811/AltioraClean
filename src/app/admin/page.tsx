@@ -22,10 +22,12 @@ import {
     Sparkles,
     MapPin,
     Phone,
+    Repeat,
 } from "lucide-react";
 import { obtenerCitasHoy, obtenerCitasSemana, obtenerCitas } from "@/lib/actions/citas";
 import { obtenerTodosLosEmpleados } from "@/lib/actions/empleados";
 import { obtenerTodosLosGastos } from "@/lib/actions/gastos";
+import { contarPlanesActivos, contarClientesConPlan } from "@/lib/actions/planes";
 import { formatearPrecio } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,9 @@ export default function AdminDashboard() {
     const [citasProximas, setCitasProximas] = useState<Cita[]>([]);
     const [citasRecientes, setCitasRecientes] = useState<Cita[]>([]);
     const [gastosMes, setGastosMes] = useState(0);
+    const [planesActivos, setPlanesActivos] = useState(0);
+    const [clientesConPlan, setClientesConPlan] = useState(0);
+    const [proximasRecurrentes, setProximasRecurrentes] = useState<Cita[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [greeting, setGreeting] = useState("");
@@ -104,6 +109,13 @@ export default function AdminDashboard() {
 
             setGastosMes(totalGastos);
 
+            const [pActivos, cConPlan] = await Promise.all([
+                contarPlanesActivos(),
+                contarClientesConPlan(),
+            ]);
+            setPlanesActivos(pActivos);
+            setClientesConPlan(cConPlan);
+
             const proximas = citasSemana
                 .filter((c) => ["pendiente", "confirmada", "en-progreso"].includes(c.estado))
                 .sort(
@@ -114,6 +126,15 @@ export default function AdminDashboard() {
                 .slice(0, 5);
 
             setCitasProximas(proximas);
+
+        const recurrentes = citasSemana
+            .filter((c) => c.origen === "plan_recurrente" && ["pendiente", "confirmada"].includes(c.estado))
+            .sort((a, b) =>
+                new Date(a.fechaCita + "T" + a.horaCita).getTime() -
+                new Date(b.fechaCita + "T" + b.horaCita).getTime()
+            )
+            .slice(0, 5);
+        setProximasRecurrentes(recurrentes);
 
             // Últimas citas completadas
             const recientes = citasMes
@@ -246,6 +267,28 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
+            {/* Planes Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: "400ms" }}>
+                    <StatsCard
+                        title="Planes Activos"
+                        value={planesActivos}
+                        description={clientesConPlan > 0 ? `${clientesConPlan} clientes suscritos` : "Sin clientes aún"}
+                        icon={Repeat}
+                        variant="primary"
+                    />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: "500ms" }}>
+                    <StatsCard
+                        title="Próximas Visitas Recurrentes"
+                        value={proximasRecurrentes.length}
+                        description={proximasRecurrentes.length > 0 ? "Agendadas para esta semana" : "Sin visitas programadas"}
+                        icon={Calendar}
+                        variant="secondary"
+                    />
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Left: Appointments */}
                 <div className="xl:col-span-2 space-y-6">
@@ -354,6 +397,62 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
 
+                    {/* Próximas Visitas Recurrentes */}
+                    {proximasRecurrentes.length > 0 && (
+                        <Card className="relative overflow-hidden border-0 shadow-xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-900 text-white">
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-400/10 rounded-full blur-3xl"></div>
+                            <CardHeader className="relative z-10 border-b border-white/10 bg-white/5 pb-4">
+                                <CardTitle className="flex items-center gap-2 text-lg text-white">
+                                    <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                                        <Repeat className="h-4 w-4 text-emerald-400" />
+                                    </div>
+                                    Próximas Visitas de Planes
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 relative z-10">
+                                <div className="divide-y divide-white/5">
+                                    {proximasRecurrentes.map((cita) => {
+                                        const diasRestantes = differenceInDays(
+                                            new Date(cita.fechaCita),
+                                            new Date()
+                                        );
+                                        const esHoy = diasRestantes === 0;
+                                        return (
+                                            <div
+                                                key={cita.$id}
+                                                className="flex items-center gap-4 p-4 hover:bg-white/5 transition-colors"
+                                            >
+                                                <div className={`flex flex-col items-center justify-center h-14 w-14 rounded-xl border shrink-0 ${
+                                                    esHoy
+                                                        ? "bg-emerald-500/20 border-emerald-500/40"
+                                                        : "bg-white/5 border-white/10"
+                                                }`}>
+                                                    <span className="text-xs font-bold uppercase text-emerald-300">
+                                                        {esHoy ? "Hoy" : format(new Date(cita.fechaCita), "MMM", { locale: es })}
+                                                    </span>
+                                                    <span className="text-xl font-bold leading-none text-white">
+                                                        {format(new Date(cita.fechaCita), "d")}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-white truncate">
+                                                        {cita.clienteNombre}
+                                                    </h4>
+                                                    <p className="text-xs text-emerald-300">
+                                                        {cita.horaCita} • {cita.ciudad}
+                                                    </p>
+                                                </div>
+                                                <span className="text-sm font-medium text-emerald-300 shrink-0">
+                                                    {formatearPrecio(cita.precioAcordado)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Actividad Reciente */}
                     <Card className="relative overflow-hidden border-0 shadow-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
                         <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
@@ -432,6 +531,7 @@ export default function AdminDashboard() {
                                 { href: "/admin/gastos", label: "Reg. Gasto", icon: FileText, color: "bg-rose-500/20 text-rose-400" },
                                 { href: "/admin/personal", label: "Equipo", icon: Users, color: "bg-violet-500/20 text-violet-400" },
                                 { href: "/admin/reportes", label: "Reportes", icon: TrendingUp, color: "bg-amber-500/20 text-amber-400" },
+                                { href: "/admin/planes", label: "Planes", icon: Repeat, color: "bg-sky-500/20 text-sky-400" },
                             ].map((item) => (
                                 <Link key={item.href} href={item.href} className="block">
                                     <Button
